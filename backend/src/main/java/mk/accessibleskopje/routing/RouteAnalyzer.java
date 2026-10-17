@@ -6,9 +6,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Predicate;
 
 import mk.accessibleskopje.common.Geo;
 import mk.accessibleskopje.routing.RouteApi.Coverage;
+import mk.accessibleskopje.routing.RouteApi.CrossingDetails;
 import mk.accessibleskopje.routing.RouteApi.Indicator;
 import mk.accessibleskopje.routing.RouteApi.RouteSummary;
 import mk.accessibleskopje.routing.RouteApi.SteepSection;
@@ -44,7 +46,7 @@ public final class RouteAnalyzer {
                     stairWaysWithHandrail.add(s.osmWayId());
                 }
             }
-            if ("raised".equals(s.kerbType()) || (s.kerbHeightCm() != null && s.kerbHeightCm() > 3)) {
+            if (raisedKerb(s)) {
                 raisedKerbEdges.add(s.edgeId());
             }
             if (s.rough()) {
@@ -64,7 +66,7 @@ public final class RouteAnalyzer {
             } else if (s.lit() == null) {
                 unknownLit += s.lengthM();
             }
-            if (s.widthM() != null && !Boolean.TRUE.equals(s.widthEstimated()) && s.widthM() < NARROW_M) {
+            if (narrow(s)) {
                 narrow += s.lengthM();
             }
         }
@@ -172,13 +174,14 @@ public final class RouteAnalyzer {
     public static List<Warning> warnings(List<Segment> segs, RouteSummary s, Coverage c, RoutingPreferences p) {
         List<Warning> w = new ArrayList<>();
         double total = segs.stream().mapToDouble(Segment::lengthM).sum();
+        List<Crossings.Crossing> crossings = Crossings.extract(segs);
         if (s.stairs() > 0) {
             w.add(new Warning("STAIRS_ON_ROUTE", p.is(p.avoidStairs()) || p.isWheeled() ? "WARNING" : "INFO",
-                    s.stairs(), null, firstLocation(segs, Segment::stairs)));
+                    s.stairs(), null, runStarts(segs, Segment::stairs)));
         }
         if (s.raisedKerbs() > 0) {
             w.add(new Warning("RAISED_KERB", p.isWheeled() ? "WARNING" : "INFO", s.raisedKerbs(), null,
-                    firstLocation(segs, x -> "raised".equals(x.kerbType()))));
+                    runStarts(segs, RouteAnalyzer::raisedKerb)));
         }
         for (SteepSection st : s.steepSections()) {
             w.add(new Warning("MAPPED".equals(st.source()) ? "STEEP_SECTION" : "STEEP_SECTION_ESTIMATED",
@@ -187,62 +190,89 @@ public final class RouteAnalyzer {
         }
         if (s.carriagewayM() > 0) {
             w.add(new Warning("WALK_ON_CARRIAGEWAY", "WARNING", null, s.carriagewayM(),
-                    firstLocation(segs, Segment::onCarriageway)));
+                    runStarts(segs, Segment::onCarriageway)));
         }
         if (s.unknownSidewalkM() >= 50) {
             w.add(new Warning("SIDEWALK_UNKNOWN", "CAUTION", null, s.unknownSidewalkM(),
-                    firstLocation(segs, Segment::sidewalkUnknown)));
+                    runStarts(segs, Segment::sidewalkUnknown)));
         }
         if (s.roughSurfaceM() > 0) {
             w.add(new Warning("ROUGH_SURFACE", p.isWheeled() || p.is(p.avoidRoughSurfaces()) ? "WARNING" : "INFO",
-                    null, s.roughSurfaceM(), firstLocation(segs, Segment::rough)));
+                    null, s.roughSurfaceM(), runStarts(segs, Segment::rough)));
         }
         if (total > 0 && s.unknownSurfaceM() / total > 0.2) {
-            w.add(new Warning("SURFACE_UNKNOWN", "CAUTION", null, s.unknownSurfaceM(), null));
+            // Spread over much of the route, so it gets no flags of its own.
+            w.add(new Warning("SURFACE_UNKNOWN", "CAUTION", null, s.unknownSurfaceM(), List.of()));
         }
         int noSignals = s.crossings() - s.crossingsWithSignals();
         if (noSignals > 0) {
             w.add(new Warning("CROSSING_WITHOUT_SIGNALS", p.isVisualGuidance() ? "WARNING" : "INFO", noSignals,
-                    null, null));
+                    null, crossingsWhere(crossings, d -> !Boolean.TRUE.equals(d.signals()))));
         }
         if (p.isVisualGuidance()) {
-            long soundUnknown = Crossings.extract(segs).stream()
-                    .filter(x -> Boolean.TRUE.equals(x.details().signals()) && x.details().sound() == null).count();
-            if (soundUnknown > 0) {
-                w.add(new Warning("CROSSING_SOUND_UNKNOWN", "CAUTION", (int) soundUnknown, null, null));
+            var soundUnknown = crossingsWhere(crossings,
+                    d -> Boolean.TRUE.equals(d.signals()) && d.sound() == null);
+            if (!soundUnknown.isEmpty()) {
+                w.add(new Warning("CROSSING_SOUND_UNKNOWN", "CAUTION", soundUnknown.size(), null, soundUnknown));
             }
             int tactileMissing = s.crossings() - s.crossingsWithTactile();
             if (tactileMissing > 0) {
-                w.add(new Warning("CROSSING_TACTILE_NOT_MAPPED", "CAUTION", tactileMissing, null, null));
+                w.add(new Warning("CROSSING_TACTILE_NOT_MAPPED", "CAUTION", tactileMissing, null,
+                        crossingsWhere(crossings, d -> !Boolean.TRUE.equals(d.tactilePaving()))));
             }
         }
         if (p.isWheeled() && s.crossingsKerbUnknown() > 0) {
-            w.add(new Warning("CROSSING_KERB_UNKNOWN", "CAUTION", s.crossingsKerbUnknown(), null, null));
+            w.add(new Warning("CROSSING_KERB_UNKNOWN", "CAUTION", s.crossingsKerbUnknown(), null,
+                    crossingsWhere(crossings, d -> d.kerb() == null || "yes".equals(d.kerb()))));
         }
         long barriers = segs.stream().filter(x -> x.barrier() != null).map(Segment::edgeId).distinct().count();
         if (barriers > 0) {
             w.add(new Warning("BARRIER_ON_ROUTE", "CAUTION", (int) barriers, null,
-                    firstLocation(segs, x -> x.barrier() != null)));
+                    runStarts(segs, x -> x.barrier() != null)));
         }
         if (s.narrowM() > 0) {
-            w.add(new Warning("NARROW_PATH", p.isWheeled() ? "WARNING" : "INFO", null, s.narrowM(), null));
+            w.add(new Warning("NARROW_PATH", p.isWheeled() ? "WARNING" : "INFO", null, s.narrowM(),
+                    runStarts(segs, RouteAnalyzer::narrow)));
         }
         if (p.isWheeled() && segs.stream().anyMatch(x -> "limited".equals(x.wheelchair()))) {
             w.add(new Warning("WHEELCHAIR_LIMITED", "CAUTION", null, null,
-                    firstLocation(segs, x -> "limited".equals(x.wheelchair()))));
+                    runStarts(segs, x -> "limited".equals(x.wheelchair()))));
         }
         if (s.unlitM() >= 100) {
-            w.add(new Warning("UNLIT_SECTION", p.is(p.preferLitPaths()) ? "CAUTION" : "INFO", null, s.unlitM(), null));
+            w.add(new Warning("UNLIT_SECTION", p.is(p.preferLitPaths()) ? "CAUTION" : "INFO", null, s.unlitM(),
+                    runStarts(segs, x -> Boolean.FALSE.equals(x.lit()))));
         }
         if ("LOW".equals(c.level())) {
-            w.add(new Warning("LOW_DATA_COVERAGE", "WARNING", null, null, null));
+            w.add(new Warning("LOW_DATA_COVERAGE", "WARNING", null, null, List.of()));
         }
         return w;
     }
 
-    private static double[] firstLocation(List<Segment> segs, java.util.function.Predicate<Segment> pred) {
-        return segs.stream().filter(pred).filter(x -> !x.coords().isEmpty()).map(x -> x.coords().get(0))
-                .findFirst().orElse(null);
+    static boolean raisedKerb(Segment s) {
+        return "raised".equals(s.kerbType()) || (s.kerbHeightCm() != null && s.kerbHeightCm() > 3);
+    }
+
+    static boolean narrow(Segment s) {
+        return s.widthM() != null && !Boolean.TRUE.equals(s.widthEstimated()) && s.widthM() < NARROW_M;
+    }
+
+    /** Where each stretch of consecutive matching segments begins, in route order. */
+    static List<double[]> runStarts(List<Segment> segs, Predicate<Segment> pred) {
+        List<double[]> out = new ArrayList<>();
+        boolean inRun = false;
+        for (Segment x : segs) {
+            boolean match = pred.test(x);
+            if (match && !inRun && !x.coords().isEmpty()) {
+                out.add(x.coords().get(0));
+            }
+            inRun = match;
+        }
+        return out;
+    }
+
+    private static List<double[]> crossingsWhere(List<Crossings.Crossing> crossings, Predicate<CrossingDetails> pred) {
+        return crossings.stream().filter(x -> pred.test(x.details()) && x.location() != null)
+                .map(Crossings.Crossing::location).toList();
     }
 
     public static Suitability suitability(RouteSummary s, Coverage c, RoutingPreferences p) {

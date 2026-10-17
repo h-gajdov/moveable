@@ -3,9 +3,9 @@ import i18n from '../i18n';
 import en from '../i18n/locales/en.json';
 import mk from '../i18n/locales/mk.json';
 import sq from '../i18n/locales/sq.json';
-import type { Instruction } from '../api/types';
+import type { Instruction, LngLat, Warning } from '../api/types';
 import { formatDistance, pickName } from './format';
-import { parseCoordinates, projectOnLine } from './geo';
+import { parseCoordinates, projectOnLine, routeFlags } from './geo';
 import { fullInstruction, instructionText } from './instructions';
 
 function keys(obj: object, prefix = ''): string[] {
@@ -66,6 +66,27 @@ describe('geo', () => {
   it('rounds distances for speech', () => {
     expect(formatDistance(83, 'en')).toMatch(/85/);
     expect(formatDistance(1234, 'en')).toMatch(/1\.2/);
+  });
+});
+
+describe('route flags', () => {
+  const crossing: LngLat = [21.43, 41.99];
+  const w = (code: string, severity: Warning['severity'], locations?: LngLat[], location?: LngLat): Warning =>
+    ({ code, severity, locations, location });
+  it('puts one flag at each place and flies the most severe warning there', () => {
+    const flags = routeFlags([
+      w('CROSSING_TACTILE_NOT_MAPPED', 'CAUTION', [crossing]),
+      w('CROSSING_WITHOUT_SIGNALS', 'WARNING', [crossing, [21.44, 41.99]]),
+      w('LOW_DATA_COVERAGE', 'WARNING', []),
+    ]);
+    expect(flags).toHaveLength(2);
+    expect(flags[0].severity).toBe('WARNING');
+    expect(flags[0].warnings.map((x) => x.code)).toEqual(['CROSSING_TACTILE_NOT_MAPPED', 'CROSSING_WITHOUT_SIGNALS']);
+  });
+  it('falls back to the single location from older responses', () => {
+    expect(routeFlags([w('STAIRS_ON_ROUTE', 'INFO', undefined, crossing)])).toEqual([
+      { at: crossing, severity: 'INFO', warnings: [expect.objectContaining({ code: 'STAIRS_ON_ROUTE' })] },
+    ]);
   });
 });
 

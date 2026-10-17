@@ -62,6 +62,10 @@ class RoutingIntegrationTest {
         assertThat(r.distanceM()).isBetween(160.0, 170.0);
         assertThat(r.summary().stairs()).isEqualTo(1);
         assertThat(r.warnings()).anyMatch(w -> w.code().equals("STAIRS_ON_ROUTE"));
+        // One map flag per flight, the first doubling as the warning's location.
+        var stairs = r.warnings().stream().filter(w -> w.code().equals("STAIRS_ON_ROUTE")).findFirst().orElseThrow();
+        assertThat(stairs.locations()).hasSize(1);
+        assertThat(stairs.location()).isEqualTo(stairs.locations().get(0));
     }
 
     @Test
@@ -126,7 +130,7 @@ class RoutingIntegrationTest {
         RouteOption r = recommended(route("WHEELCHAIR", p, N2, N5));
         // With a 0.6 m minimum the 0.7 m path is allowed — and flagged as narrow.
         assertThat(r.distanceM()).isBetween(108.0, 114.0);
-        assertThat(r.warnings()).anyMatch(w -> w.code().equals("NARROW_PATH"));
+        assertThat(r.warnings()).anyMatch(w -> w.code().equals("NARROW_PATH") && !w.locations().isEmpty());
     }
 
     @Test

@@ -127,7 +127,10 @@ export interface Warning {
   severity: 'INFO' | 'CAUTION' | 'WARNING';
   count?: number | null;
   lengthM?: number | null;
+  /** The first place it occurs. */
   location?: LngLat | null;
+  /** Every place along the route where it occurs; flagged on the map. */
+  locations?: LngLat[] | null;
 }
 
 export interface NearbyObstacle {

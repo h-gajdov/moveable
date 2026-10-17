@@ -1,4 +1,4 @@
-import type { LngLat } from '../api/types';
+import type { LngLat, Warning } from '../api/types';
 
 const R = 6_371_008.8;
 
@@ -65,4 +65,29 @@ export function parseCoordinates(text: string): { lat: number; lon: number } | n
   const lon = parseFloat(m[2].replace(',', '.'));
   if (Math.abs(lat) > 90 || Math.abs(lon) > 180) return null;
   return { lat, lon };
+}
+
+export type Severity = Warning['severity'];
+/** Most severe first. */
+export const SEVERITIES: Severity[] = ['WARNING', 'CAUTION', 'INFO'];
+
+export interface RouteFlag {
+  at: LngLat;
+  severity: Severity;
+  warnings: Warning[];
+}
+
+/** One flag per place along the route; warnings at the same place share it and it flies the most severe. */
+export function routeFlags(warnings: Warning[]): RouteFlag[] {
+  const byPlace = new Map<string, RouteFlag>();
+  for (const w of warnings) {
+    for (const at of w.locations ?? (w.location ? [w.location] : [])) {
+      const key = `${at[0].toFixed(6)},${at[1].toFixed(6)}`;
+      const flag = byPlace.get(key) ?? { at, severity: w.severity, warnings: [] };
+      if (!flag.warnings.includes(w)) flag.warnings.push(w);
+      if (SEVERITIES.indexOf(w.severity) < SEVERITIES.indexOf(flag.severity)) flag.severity = w.severity;
+      byPlace.set(key, flag);
+    }
+  }
+  return [...byPlace.values()];
 }

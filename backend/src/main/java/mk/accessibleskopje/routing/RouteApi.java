@@ -131,7 +131,19 @@ public final class RouteApi {
     public record Indicator(String need, String status, String detail) {
     }
 
-    public record Warning(String code, String severity, Integer count, Double lengthM, double[] location) {
+    /**
+     * location: the first place it occurs (null when it has no single place); locations: every place along the
+     * route where it occurs, so the map can flag each one.
+     */
+    public record Warning(String code, String severity, Integer count, Double lengthM, double[] location,
+                          List<double[]> locations) {
+        public Warning(String code, String severity, Integer count, Double lengthM, double[] location) {
+            this(code, severity, count, lengthM, location, location == null ? List.of() : List.<double[]>of(location));
+        }
+
+        public Warning(String code, String severity, Integer count, Double lengthM, List<double[]> locations) {
+            this(code, severity, count, lengthM, locations.isEmpty() ? null : locations.get(0), locations);
+        }
     }
 
     public record NearbyObstacle(String id, String category, String impact, String status, double lat, double lon,

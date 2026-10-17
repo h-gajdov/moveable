@@ -4,9 +4,9 @@ import { useEffect, useRef, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import { api } from '../api/client';
-import type { RouteOption, RouteResponse, Warning } from '../api/types';
+import type { RouteOption, RouteResponse } from '../api/types';
 import { currentLanguage } from '../i18n';
-import { formatDate, formatDistance, formatDuration } from '../lib/format';
+import { formatDate, formatDistance, formatDuration, warningText } from '../lib/format';
 import { useAnnounce } from './Announcer';
 import { RouteLine } from './RouteLine';
 import { Button, StatusMark } from './ui';
@@ -20,14 +20,6 @@ function LineSample({ n }: { n: number }) {
       <line x1="3" y1="5" x2="37" y2="5" stroke={ROUTE_COLORS[n]} strokeWidth="5" strokeDasharray={dash} strokeLinecap="round" />
     </svg>
   );
-}
-
-function warningText(w: Warning, t: ReturnType<typeof useTranslation>['t'], lang: ReturnType<typeof currentLanguage>) {
-  return t(`warning.${w.code}`, {
-    count: w.count ?? 1,
-    length: w.lengthM != null ? formatDistance(w.lengthM, lang) : '',
-    defaultValue: w.code,
-  });
 }
 
 function suitabilityStatus(level: RouteOption['suitability']['level']) {

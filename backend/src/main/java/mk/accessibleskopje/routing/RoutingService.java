@@ -390,13 +390,13 @@ public class RoutingService {
                         "VERIFIED".equals(r.status()) && fx.edgeToObstacle().entrySet().stream()
                                 .anyMatch(e -> e.getValue().equals(r.id()) && routeEdges.contains(e.getKey()))))
                 .toList();
-        long pending = obstacles.stream().filter(x -> "PENDING".equals(x.status())).count();
-        if (pending > 0) {
-            warnings.add(new Warning("UNVERIFIED_REPORTS_NEARBY", "CAUTION", (int) pending, null, null));
+        List<double[]> pending = obstacleLocations(obstacles, "PENDING");
+        if (!pending.isEmpty()) {
+            warnings.add(new Warning("UNVERIFIED_REPORTS_NEARBY", "CAUTION", pending.size(), null, pending));
         }
-        long verified = obstacles.stream().filter(x -> "VERIFIED".equals(x.status())).count();
-        if (verified > 0) {
-            warnings.add(new Warning("VERIFIED_OBSTACLE_NEARBY", "WARNING", (int) verified, null, null));
+        List<double[]> verified = obstacleLocations(obstacles, "VERIFIED");
+        if (!verified.isEmpty()) {
+            warnings.add(new Warning("VERIFIED_OBSTACLE_NEARBY", "WARNING", verified.size(), null, verified));
         }
 
         Explanation explanation = explain(b.kinds(), prefs, segs, summary, coverage, baselineSegs, baselineSummary,
@@ -405,6 +405,11 @@ public class RoutingService {
         return new RouteOption(id, b.kinds(), Geo.round(distance, 1), Math.round(distance / prefs.speed()),
                 new LineGeometry("LineString", line), instructions, summary, coverage,
                 RouteAnalyzer.suitability(summary, coverage, prefs), warnings, obstacles, explanation);
+    }
+
+    private static List<double[]> obstacleLocations(List<NearbyObstacle> obstacles, String status) {
+        return obstacles.stream().filter(x -> status.equals(x.status()))
+                .map(x -> new double[]{x.lon(), x.lat()}).toList();
     }
 
     private Explanation explain(List<String> kinds, RoutingPreferences p, List<Segment> segs, RouteSummary s,

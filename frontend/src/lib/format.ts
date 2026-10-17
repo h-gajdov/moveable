@@ -1,5 +1,5 @@
 import type { TFunction } from 'i18next';
-import type { Names } from '../api/types';
+import type { Names, Warning } from '../api/types';
 import { LOCALE_TAGS, type Language } from '../i18n';
 
 export function formatDistance(m: number, lang: Language): string {
@@ -39,4 +39,18 @@ export function pickName(names: Names | undefined | null, lang: Language): strin
 
 export function coordLabel(lat: number, lon: number) {
   return `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+}
+
+/** A warning about the whole route, e.g. "2 sets of stairs on this route." */
+export function warningText(w: Warning, t: TFunction, lang: Language): string {
+  return t(`warning.${w.code}`, {
+    count: w.count ?? 1,
+    length: w.lengthM != null ? formatDistance(w.lengthM, lang) : '',
+    defaultValue: w.code,
+  });
+}
+
+/** A warning at one of its places, for a map flag; falls back to the route-wide text. */
+export function warningFlagText(w: Warning, t: TFunction, lang: Language): string {
+  return t(`warning.flag.${w.code}`, { defaultValue: warningText(w, t, lang) });
 }

@@ -7,8 +7,8 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../api/client';
 import type { ChosenLocation, LngLat, Names, ParkingSpot, RouteOption } from '../api/types';
 import { currentLanguage } from '../i18n';
-import { pickName } from '../lib/format';
-import { bboxOf, distanceM } from '../lib/geo';
+import { pickName, warningFlagText } from '../lib/format';
+import { bboxOf, distanceM, routeFlags, SEVERITIES, type RouteFlag, type Severity } from '../lib/geo';
 import { prefersReducedMotion, useSettings } from '../settings/SettingsContext';
 import { parkingLabel } from './Parking';
 import { Button, Checkbox } from './ui';
@@ -61,6 +61,69 @@ function parkingIcon(): ImageData | null {
   return ctx.getImageData(0, 0, size, size);
 }
 
+const FLAG_COLORS: Record<Severity, string> = { WARNING: '#c4000f', CAUTION: '#c93400', INFO: '#3634a3' };
+
+/**
+ * Flag on a pole for a warning along the route. Severity shows by shape and
+ * glyph as well as colour: warnings fly a pointed pennant with "!", cautions a
+ * square flag with "!", notes a square flag with "i".
+ */
+function flagIcon(severity: Severity): ImageData | null {
+  const size = 96;
+  const ctx = document.createElement('canvas').getContext('2d');
+  if (!ctx) return null;
+  ctx.canvas.width = ctx.canvas.height = size;
+  // Drawn on a 64 grid, shared with FlagSample, at 48 CSS px.
+  ctx.scale(size / 64, size / 64);
+  const cloth = new Path2D();
+  if (severity === 'WARNING') {
+    cloth.moveTo(16, 6);
+    cloth.lineTo(60, 22);
+    cloth.lineTo(16, 38);
+    cloth.closePath();
+  } else {
+    cloth.roundRect(16, 6, 40, 30, 4);
+  }
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  // White outline first so the flag reads on any base map.
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 8;
+  ctx.beginPath();
+  ctx.moveTo(12, 6);
+  ctx.lineTo(12, 60);
+  ctx.stroke();
+  ctx.stroke(cloth);
+  ctx.strokeStyle = '#1d1d1f';
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(12, 6);
+  ctx.lineTo(12, 60);
+  ctx.stroke();
+  ctx.fillStyle = FLAG_COLORS[severity];
+  ctx.fill(cloth);
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 22px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(severity === 'INFO' ? 'i' : '!', severity === 'WARNING' ? 29 : 36, 22);
+  return ctx.getImageData(0, 0, size, size);
+}
+
+/** The same flag as a small inline picture, for the legend. */
+function FlagSample({ severity }: { severity: Severity }) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 64 64" className="size-6 shrink-0">
+      <path d="M12 6v54" stroke="#1d1d1f" strokeWidth="4" strokeLinecap="round" />
+      {severity === 'WARNING'
+        ? <path d="M16 6 60 22 16 38Z" fill={FLAG_COLORS[severity]} stroke="#fff" strokeWidth="2" strokeLinejoin="round" />
+        : <rect x="16" y="6" width="40" height="30" rx="4" fill={FLAG_COLORS[severity]} stroke="#fff" strokeWidth="2" />}
+      <text x={severity === 'WARNING' ? 29 : 36} y="23" fill="#fff" fontSize="22" fontWeight="bold" textAnchor="middle"
+        dominantBaseline="middle" fontFamily="system-ui, sans-serif">{severity === 'INFO' ? 'i' : '!'}</text>
+    </svg>
+  );
+}
+
 /** Names of a base map place label (OpenMapTiles `poi` layer). */
 function tileNames(p: Record<string, unknown>): Names {
   const s = (k: string) => (typeof p[k] === 'string' && p[k] ? p[k] as string : undefined);
@@ -104,12 +167,13 @@ export function MapView({ center, zoom, routes, selectedId, origin, destination,
   const markers = useRef<maplibregl.Marker[]>([]);
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
-  const [layers, setLayers] = useState({ obstacles: true, features: false, coverage: false });
+  const [layers, setLayers] = useState({ flags: true, obstacles: true, features: false, coverage: false });
   const [zoomTooLow, setZoomTooLow] = useState(false);
   const pickRef = useRef({ pickLabel, onPick, onCancelPick });
   pickRef.current = { pickLabel, onPick, onCancelPick };
   const parkingRef = useRef({ parking, onViewChange, onPlaceSelect, t });
   parkingRef.current = { parking, onViewChange, onPlaceSelect, t };
+  const flags = useRef<RouteFlag[]>([]);
   const popup = useRef<maplibregl.Popup | null>(null);
   const reduced = prefersReducedMotion(settings.ui);
 
@@ -144,9 +208,13 @@ export function MapView({ center, zoom, routes, selectedId, origin, destination,
     });
     map.on('load', () => {
       const add = (id: string) => map.addSource(id, { type: 'geojson', data: EMPTY });
-      ['routes', 'obstacles', 'features', 'coverage', 'parking', 'position'].forEach(add);
+      ['routes', 'flags', 'obstacles', 'features', 'coverage', 'parking', 'position'].forEach(add);
       const icon = parkingIcon();
       if (icon) map.addImage('parking-disabled', icon, { pixelRatio: 2 });
+      for (const sev of SEVERITIES) {
+        const flag = flagIcon(sev);
+        if (flag) map.addImage(`flag-${sev}`, flag, { pixelRatio: 2 });
+      }
       map.addLayer({ id: 'coverage', type: 'fill', source: 'coverage', paint: {
         'fill-color': '#3634a3', 'fill-opacity': ['interpolate', ['linear'], ['get', 'completeness'], 0, 0.05, 0.6, 0.45],
       } });
@@ -174,6 +242,12 @@ export function MapView({ center, zoom, routes, selectedId, origin, destination,
         'circle-color': ['case', ['get', 'verified'], '#c4000f', '#ffffff'],
         'circle-stroke-color': ['case', ['get', 'verified'], '#ffffff', '#c4000f'],
       } });
+      // The pole's foot stands on the place; more severe flags are drawn on top.
+      map.addLayer({ id: 'flags', type: 'symbol', source: 'flags', layout: {
+        'icon-image': ['concat', 'flag-', ['get', 'severity']], 'icon-anchor': 'bottom-left', 'icon-offset': [-9, 3],
+        'icon-allow-overlap': true, 'icon-ignore-placement': true, 'symbol-sort-key': ['get', 'rank'],
+        'icon-size': ['interpolate', ['linear'], ['zoom'], 13, 0.6, 17, 1],
+      } });
       map.addLayer({ id: 'position-accuracy', type: 'circle', source: 'position', paint: {
         'circle-radius': ['get', 'radiusPx'], 'circle-color': '#0071e3', 'circle-opacity': 0.15,
       } });
@@ -192,6 +266,36 @@ export function MapView({ center, zoom, routes, selectedId, origin, destination,
     // Shops, malls and other named places drawn by the base map style.
     const poiLayers = () => (map.getStyle()?.layers ?? [])
       .filter((l) => l.type === 'symbol' && 'source-layer' in l && l['source-layer'] === 'poi').map((l) => l.id);
+    const showPopup = ([lon, lat]: LngLat, body: HTMLElement) => {
+      popup.current?.remove();
+      // Open downwards near the top, where the floating buttons are, and inwards near the sides.
+      const at = map.project([lon, lat]);
+      const { clientWidth: w, clientHeight: h } = map.getContainer();
+      const side = at.x < w * 0.3 ? '-left' : at.x > w * 0.7 ? '-right' : '';
+      const anchor = `${at.y < h * 0.45 ? 'top' : 'bottom'}${side}` as maplibregl.PositionAnchor;
+      popup.current = new maplibregl.Popup({ maxWidth: '16rem', className: 'map-popup', anchor, offset: 18 })
+        .setLngLat([lon, lat]).setDOMContent(body).addTo(map);
+    };
+    /** Reads out the warnings at a tapped flag. */
+    const openFlag = (flag: RouteFlag) => {
+      const { t: tr } = parkingRef.current;
+      const lang = currentLanguage();
+      const body = document.createElement('div');
+      const title = document.createElement('p');
+      title.className = 'font-semibold pr-10 text-[1.0625rem]';
+      title.textContent = tr('map.flagsHere');
+      const list = document.createElement('ul');
+      list.className = 'mt-1 flex flex-col gap-1.5';
+      for (const w of [...flag.warnings].sort((a, b) => SEVERITIES.indexOf(a.severity) - SEVERITIES.indexOf(b.severity))) {
+        const li = document.createElement('li');
+        const sev = document.createElement('strong');
+        sev.textContent = `${tr(`warning.severity.${w.severity}`)}: `;
+        li.append(sev, warningFlagText(w, tr, lang));
+        list.append(li);
+      }
+      body.append(title, list);
+      showPopup(flag.at, body);
+    };
     /** Names a tapped place and offers it as start or destination. */
     const openChooser = (place: ChosenLocation) => {
       const { onPlaceSelect: select, t: tr } = parkingRef.current;
@@ -214,14 +318,14 @@ export function MapView({ center, zoom, routes, selectedId, origin, destination,
           body.append(b);
         }
       }
-      popup.current?.remove();
-      // Open downwards near the top, where the floating buttons are, and inwards near the sides.
-      const at = map.project([place.lon, place.lat]);
-      const { clientWidth: w, clientHeight: h } = map.getContainer();
-      const side = at.x < w * 0.3 ? '-left' : at.x > w * 0.7 ? '-right' : '';
-      const anchor = `${at.y < h * 0.45 ? 'top' : 'bottom'}${side}` as maplibregl.PositionAnchor;
-      popup.current = new maplibregl.Popup({ maxWidth: '16rem', className: 'map-popup', anchor, offset: 18 })
-        .setLngLat([place.lon, place.lat]).setDOMContent(body).addTo(map);
+      showPopup([place.lon, place.lat], body);
+    };
+    /** The route flag under a point, if any; the flag stands up and right of its place. */
+    const flagAt = (pt: maplibregl.Point) => {
+      if (!map.getLayer('flags')) return null;
+      const box: [[number, number], [number, number]] = [[pt.x - 6, pt.y - 6], [pt.x + 6, pt.y + 6]];
+      const hit = map.queryRenderedFeatures(box, { layers: ['flags'] })[0];
+      return hit ? flags.current[hit.properties?.i as number] ?? null : null;
     };
     /** The parking sign or named place under a point, topmost first; a little slack for fingers. */
     const placeAt = (pt: maplibregl.Point): ChosenLocation | null => {
@@ -246,11 +350,13 @@ export function MapView({ center, zoom, routes, selectedId, origin, destination,
         pickRef.current.onPick?.([e.lngLat.lng, e.lngLat.lat]);
         return;
       }
+      const flag = flagAt(e.point);
+      if (flag) return openFlag(flag);
       const place = placeAt(e.point);
       if (place) openChooser(place);
     });
     map.on('mousemove', (e) => {
-      map.getCanvas().style.cursor = !pickRef.current.pickLabel && placeAt(e.point) ? 'pointer' : '';
+      map.getCanvas().style.cursor = !pickRef.current.pickLabel && (flagAt(e.point) || placeAt(e.point)) ? 'pointer' : '';
     });
     const canvas = map.getCanvasContainer();
     const onKey = (e: KeyboardEvent) => {
@@ -303,6 +409,20 @@ export function MapView({ center, zoom, routes, selectedId, origin, destination,
       map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: FIT_PADDING, duration: reduced ? 0 : 600, maxZoom: 17 });
     }
   }, [routes, selectedId, ready, settings.ui.theme, reduced]);
+
+  // Warning flags along the selected route.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    const selected = routes.find((r) => r.id === selectedId) ?? routes[0];
+    flags.current = layers.flags && selected ? routeFlags(selected.warnings) : [];
+    (map.getSource('flags') as GeoJSONSource).setData({
+      type: 'FeatureCollection',
+      features: flags.current.map((f, i) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: f.at },
+        properties: { i, severity: f.severity, rank: SEVERITIES.length - SEVERITIES.indexOf(f.severity) } })),
+    });
+    popup.current?.remove();
+  }, [routes, selectedId, layers.flags, ready]);
 
   // Start/destination markers.
   useEffect(() => {
@@ -422,6 +542,8 @@ export function MapView({ center, zoom, routes, selectedId, origin, destination,
           {t('map.layers')}
         </summary>
         <div className="rows px-3 pb-2">
+          <Checkbox label={t('map.flags')} hint={t('map.flagsHint')} checked={layers.flags}
+            onChange={(v) => setLayers((l) => ({ ...l, flags: v }))} />
           <Checkbox label={t('map.obstacles')} checked={layers.obstacles} onChange={(v) => setLayers((l) => ({ ...l, obstacles: v }))} />
           <Checkbox label={t('map.features')} checked={layers.features} onChange={(v) => setLayers((l) => ({ ...l, features: v }))}
             hint={zoomTooLow ? t('map.zoomIn') : undefined} />
@@ -430,6 +552,9 @@ export function MapView({ center, zoom, routes, selectedId, origin, destination,
           <div className="flex flex-col gap-1 py-2.5 text-[0.875rem]">
             <p className="flex items-center gap-2"><span aria-hidden="true" className="inline-block size-4 rounded-full border-[3px] border-white bg-issue" />{t('map.legendVerified')}</p>
             <p className="flex items-center gap-2"><span aria-hidden="true" className="inline-block size-4 rounded-full border-[3px] border-issue bg-white" />{t('map.legendPending')}</p>
+            {SEVERITIES.map((sev) => (
+              <p key={sev} className="flex items-center gap-2"><FlagSample severity={sev} />{t(`warning.severity.${sev}`)}</p>
+            ))}
           </div>
         </div>
       </details>
