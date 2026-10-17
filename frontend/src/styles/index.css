@@ -579,7 +579,7 @@ a { color: inherit; }
 .maplibregl-ctrl-attrib {
   font-size: 0.75rem;
 }
-/* Popups (parking signs) follow the theme. */
+/* Popups (parking signs, named places) follow the theme. */
 .map-popup {
   z-index: 5;
 }
@@ -592,8 +592,8 @@ a { color: inherit; }
   font: inherit;
   font-size: 0.9375rem;
 }
-.map-popup.maplibregl-popup-anchor-bottom .maplibregl-popup-tip { border-top-color: var(--c-card); }
-.map-popup.maplibregl-popup-anchor-top .maplibregl-popup-tip { border-bottom-color: var(--c-card); }
+.map-popup:is(.maplibregl-popup-anchor-bottom, .maplibregl-popup-anchor-bottom-left, .maplibregl-popup-anchor-bottom-right) .maplibregl-popup-tip { border-top-color: var(--c-card); }
+.map-popup:is(.maplibregl-popup-anchor-top, .maplibregl-popup-anchor-top-left, .maplibregl-popup-anchor-top-right) .maplibregl-popup-tip { border-bottom-color: var(--c-card); }
 .map-popup.maplibregl-popup-anchor-left .maplibregl-popup-tip { border-right-color: var(--c-card); }
 .map-popup.maplibregl-popup-anchor-right .maplibregl-popup-tip { border-left-color: var(--c-card); }
 .map-popup .maplibregl-popup-close-button {

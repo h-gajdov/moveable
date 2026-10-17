@@ -141,11 +141,15 @@ export function PlanPage() {
     : { center: near ? [near.lon, near.lat] : center, radiusM: 2000, label: near?.label ?? t('parking.center') };
   const parking = useParking(parkingArea, showParking);
 
+  /** A parking spot or a named place tapped on the map becomes the start or destination. */
+  function choosePlace(place: ChosenLocation, field: 'origin' | 'destination') {
+    (field === 'origin' ? trip.setOrigin : trip.setDestination)(place);
+    setFocus({ lngLat: [place.lon, place.lat], nonce: Date.now() });
+    announce(t('plan.selected', { field: t(field === 'origin' ? 'plan.from' : 'plan.to'), label: place.label }));
+  }
+
   function chooseParking(p: ParkingSpot, field: 'origin' | 'destination') {
-    const label = parkingLabel(p, t('parking.unnamed'));
-    (field === 'origin' ? trip.setOrigin : trip.setDestination)({ lat: p.lat, lon: p.lon, label, source: 'search' });
-    setFocus({ lngLat: [p.lon, p.lat], nonce: Date.now() });
-    announce(t('plan.selected', { field: t(field === 'origin' ? 'plan.from' : 'plan.to'), label }));
+    choosePlace({ lat: p.lat, lon: p.lon, label: parkingLabel(p, t('parking.unnamed')), source: 'search' }, field);
   }
 
   function showParkingOnMap(p: ParkingSpot) {
@@ -298,7 +302,7 @@ export function PlanPage() {
         focus={focus}
         parking={showParking ? parking.data : null}
         onViewChange={setMapView}
-        onParkingSelect={chooseParking}
+        onPlaceSelect={choosePlace}
       />
       {!pickField && (
         <div className="absolute left-2.5 top-2.5">

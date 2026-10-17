@@ -5,7 +5,9 @@ import { Layers } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../api/client';
-import type { ChosenLocation, LngLat, ParkingSpot, RouteOption } from '../api/types';
+import type { ChosenLocation, LngLat, Names, ParkingSpot, RouteOption } from '../api/types';
+import { currentLanguage } from '../i18n';
+import { pickName } from '../lib/format';
 import { bboxOf, distanceM } from '../lib/geo';
 import { prefersReducedMotion, useSettings } from '../settings/SettingsContext';
 import { parkingLabel } from './Parking';
@@ -59,6 +61,12 @@ function parkingIcon(): ImageData | null {
   return ctx.getImageData(0, 0, size, size);
 }
 
+/** Names of a base map place label (OpenMapTiles `poi` layer). */
+function tileNames(p: Record<string, unknown>): Names {
+  const s = (k: string) => (typeof p[k] === 'string' && p[k] ? p[k] as string : undefined);
+  return { default: s('name'), mk: s('name:mk'), sq: s('name:sq'), en: s('name:en') ?? s('name_en'), latn: s('name:latin') };
+}
+
 export interface MapFocus {
   lngLat: LngLat;
   nonce: number;
@@ -70,7 +78,7 @@ export interface MapFocus {
  * pick mode Enter chooses the centre point.
  */
 export function MapView({ center, zoom, routes, selectedId, origin, destination, pickLabel, onPick, onCancelPick, focus, position,
-  parking, onViewChange, onParkingSelect }: {
+  parking, onViewChange, onPlaceSelect }: {
   center: LngLat;
   zoom: number;
   routes: RouteOption[];
@@ -86,7 +94,8 @@ export function MapView({ center, zoom, routes, selectedId, origin, destination,
   parking?: ParkingSpot[] | null;
   /** Called with the visible area after every move (and once when ready). */
   onViewChange?: (view: { center: LngLat; radiusM: number }) => void;
-  onParkingSelect?: (spot: ParkingSpot, field: 'origin' | 'destination') => void;
+  /** Called when a parking sign or a named place on the base map is chosen as start or destination. */
+  onPlaceSelect?: (place: ChosenLocation, field: 'origin' | 'destination') => void;
 }) {
   const { t } = useTranslation();
   const { settings } = useSettings();
@@ -99,8 +108,8 @@ export function MapView({ center, zoom, routes, selectedId, origin, destination,
   const [zoomTooLow, setZoomTooLow] = useState(false);
   const pickRef = useRef({ pickLabel, onPick, onCancelPick });
   pickRef.current = { pickLabel, onPick, onCancelPick };
-  const parkingRef = useRef({ parking, onViewChange, onParkingSelect, t });
-  parkingRef.current = { parking, onViewChange, onParkingSelect, t };
+  const parkingRef = useRef({ parking, onViewChange, onPlaceSelect, t });
+  parkingRef.current = { parking, onViewChange, onPlaceSelect, t };
   const popup = useRef<maplibregl.Popup | null>(null);
   const reduced = prefersReducedMotion(settings.ui);
 
@@ -180,20 +189,17 @@ export function MapView({ center, zoom, routes, selectedId, origin, destination,
       parkingRef.current.onViewChange?.({ center: [c.lng, c.lat], radiusM: distanceM([c.lng, c.lat], [ne.lng, ne.lat]) });
     };
     map.on('moveend', reportView);
-    map.on('click', (e) => {
-      if (pickRef.current.pickLabel && pickRef.current.onPick) pickRef.current.onPick([e.lngLat.lng, e.lngLat.lat]);
-    });
-    // Tapping a parking sign names it and offers it as start or destination.
-    map.on('click', 'parking', (e) => {
-      if (pickRef.current.pickLabel) return;
-      const { parking: spots, onParkingSelect: select, t: tr } = parkingRef.current;
-      const spot = spots?.find((p) => p.id === e.features?.[0]?.properties?.id);
-      if (!spot) return;
+    // Shops, malls and other named places drawn by the base map style.
+    const poiLayers = () => (map.getStyle()?.layers ?? [])
+      .filter((l) => l.type === 'symbol' && 'source-layer' in l && l['source-layer'] === 'poi').map((l) => l.id);
+    /** Names a tapped place and offers it as start or destination. */
+    const openChooser = (place: ChosenLocation) => {
+      const { onPlaceSelect: select, t: tr } = parkingRef.current;
       const body = document.createElement('div');
       body.className = 'flex flex-col gap-2';
       const title = document.createElement('p');
       title.className = 'font-semibold pr-10 text-[1.0625rem]';
-      title.textContent = parkingLabel(spot, tr('parking.unnamed'));
+      title.textContent = place.label;
       body.append(title);
       if (select) {
         for (const field of ['origin', 'destination'] as const) {
@@ -203,19 +209,49 @@ export function MapView({ center, zoom, routes, selectedId, origin, destination,
           b.textContent = tr(field === 'origin' ? 'parking.useOrigin' : 'parking.useDestination');
           b.addEventListener('click', () => {
             popup.current?.remove();
-            select(spot, field);
+            select(place, field);
           });
           body.append(b);
         }
       }
       popup.current?.remove();
-      // Open downwards near the top, where the floating buttons are.
-      const below = map.project([spot.lon, spot.lat]).y < map.getContainer().clientHeight * 0.45;
-      popup.current = new maplibregl.Popup({ maxWidth: '16rem', className: 'map-popup', anchor: below ? 'top' : 'bottom', offset: 18 })
-        .setLngLat([spot.lon, spot.lat]).setDOMContent(body).addTo(map);
+      // Open downwards near the top, where the floating buttons are, and inwards near the sides.
+      const at = map.project([place.lon, place.lat]);
+      const { clientWidth: w, clientHeight: h } = map.getContainer();
+      const side = at.x < w * 0.3 ? '-left' : at.x > w * 0.7 ? '-right' : '';
+      const anchor = `${at.y < h * 0.45 ? 'top' : 'bottom'}${side}` as maplibregl.PositionAnchor;
+      popup.current = new maplibregl.Popup({ maxWidth: '16rem', className: 'map-popup', anchor, offset: 18 })
+        .setLngLat([place.lon, place.lat]).setDOMContent(body).addTo(map);
+    };
+    /** The parking sign or named place under a point, topmost first; a little slack for fingers. */
+    const placeAt = (pt: maplibregl.Point): ChosenLocation | null => {
+      const layers = [...(map.getLayer('parking') ? ['parking'] : []), ...poiLayers()];
+      if (!layers.length) return null;
+      const box: [[number, number], [number, number]] = [[pt.x - 6, pt.y - 6], [pt.x + 6, pt.y + 6]];
+      for (const f of map.queryRenderedFeatures(box, { layers })) {
+        const { parking: spots, t: tr } = parkingRef.current;
+        if (f.layer.id === 'parking') {
+          const spot = spots?.find((p) => p.id === f.properties?.id);
+          if (spot) return { lat: spot.lat, lon: spot.lon, label: parkingLabel(spot, tr('parking.unnamed')), source: 'search' };
+        } else if (f.geometry.type === 'Point') {
+          const label = pickName(tileNames(f.properties ?? {}), currentLanguage());
+          const [lon, lat] = f.geometry.coordinates;
+          if (label) return { lat, lon, label, source: 'search' };
+        }
+      }
+      return null;
+    };
+    map.on('click', (e) => {
+      if (pickRef.current.pickLabel) {
+        pickRef.current.onPick?.([e.lngLat.lng, e.lngLat.lat]);
+        return;
+      }
+      const place = placeAt(e.point);
+      if (place) openChooser(place);
     });
-    map.on('mouseenter', 'parking', () => { map.getCanvas().style.cursor = 'pointer'; });
-    map.on('mouseleave', 'parking', () => { map.getCanvas().style.cursor = ''; });
+    map.on('mousemove', (e) => {
+      map.getCanvas().style.cursor = !pickRef.current.pickLabel && placeAt(e.point) ? 'pointer' : '';
+    });
     const canvas = map.getCanvasContainer();
     const onKey = (e: KeyboardEvent) => {
       if (!pickRef.current.pickLabel) return;
