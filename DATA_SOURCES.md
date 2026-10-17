@@ -75,5 +75,5 @@ Backend: Spring Boot, Hibernate, Flyway, springdoc (Apache-2.0); PostgreSQL
 (PostgreSQL licence); PostGIS (GPL-2.0); pgRouting (GPL-2.0). Pipeline: osmium-tool
 and pyosmium (BSD-2), psycopg (LGPL-3), NumPy/SciPy (BSD), rasterio (BSD-3),
 Shapely (BSD-3), pyproj (MIT). Frontend: React, Vite, TanStack Query, i18next,
-lucide (MIT/ISC); MapLibre GL JS (BSD-3); Tailwind CSS (MIT); Fira Sans (OFL-1.1);
+lucide (MIT/ISC); MapLibre GL JS (BSD-3); Tailwind CSS (MIT); Inter (OFL-1.1);
 Playwright (Apache-2.0); axe-core (MPL-2.0).

@@ -1,140 +1,207 @@
 @import "tailwindcss";
 
-/* Fonts are self-hosted (no third-party font requests). Fira Sans covers
-   Macedonian Cyrillic and Albanian (ë, ç). */
-@import "@fontsource/fira-sans/400.css";
-@import "@fontsource/fira-sans/500.css";
-@import "@fontsource/fira-sans/700.css";
-@import "@fontsource/fira-sans-condensed/600.css";
-@import "@fontsource/fira-sans-condensed/700.css";
+/* Fonts: SF Pro through the system stack on Apple devices; Inter (self-hosted,
+   covers Macedonian Cyrillic and Albanian ë/ç) everywhere else. No third-party
+   font requests. */
+@import "@fontsource-variable/inter/wght.css";
 
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 /* ---------------------------------------------------------------------------
-   Tokens. Names follow the subject: Vardar (river teal), stone (Stone Bridge),
-   tactile (tactile-paving yellow, used for focus and highlights only).
+   Tokens, following the Apple design system (~/.claude/skills/apple-design):
+   neutral triad (white / #f5f5f7 / black), one blue accent, near-black ink.
+   Semantic colours are Apple's accessible system colours, checked for AA.
+   --c-link is the accent for *text*: #0071e3 is a fill colour and drops
+   under 4.5:1 on the pale gray canvas.
    --------------------------------------------------------------------------- */
 :root,
 :root[data-theme="light"] {
-  --c-bg: #eef2f3;
-  --c-surface: #ffffff;
-  --c-surface-2: #e3eaec;
-  --c-ink: #0f2a33;
-  --c-ink-soft: #3d5862;
-  --c-line: #b7c6cb;
-  --c-vardar: #0b4f6c;
-  --c-vardar-ink: #ffffff;
-  --c-tactile: #ffd23f;
-  --c-tactile-ink: #0f2a33;
-  --c-ok: #1f7a4d;
-  --c-issue: #b4410e;
-  --c-unknown: #5b5f97;
-  --c-route-1: #0072b2;
-  --c-route-2: #b35c00;
-  --c-route-3: #a8457f;
-  --c-focus-outer: #0f2a33;
-  --c-focus-inner: #ffd23f;
-  --border-w: 1px;
+  --c-canvas: #f5f5f7;
+  --c-card: #ffffff;
+  --c-fill: #e8e8ed;
+  --c-fill-strong: #d2d2d7;
+  --c-ink: #1d1d1f;
+  --c-ink-2: #424245;
+  --c-muted: #6e6e73;
+  --c-hairline: #d2d2d7;
+  --c-control: #86868b;
+  --c-accent: #0071e3;
+  --c-accent-hover: #0077ed;
+  --c-accent-ink: #ffffff;
+  --c-link: #0066cc;
+  --c-tint: #e8f2fd;
+  --c-ok: #1e7b34;
+  --c-issue: #c4000f;
+  --c-caution: #c93400;
+  --c-unknown: #3634a3;
+  --c-route-1: #0071e3;
+  --c-route-2: #c93400;
+  --c-route-3: #8944ab;
+  --c-bar: #161617;
+  --c-bar-ink: #e8e8ed;
+  --c-bar-muted: #a1a1a6;
+  --c-glass: rgb(255 255 255 / 0.82);
+  --c-focus: #0071e3;
+  --c-switch-on: #1e7b34;
+  --hair: 1px;
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.04), 0 4px 16px rgb(0 0 0 / 0.06);
+  --shadow-float: 0 8px 32px rgb(0 0 0 / 0.14), 0 1px 3px rgb(0 0 0 / 0.08);
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme]) ,
+  :root:not([data-theme]),
   :root[data-theme="system"] {
-    --c-bg: #0e1f26;
-    --c-surface: #142a33;
-    --c-surface-2: #1c3742;
-    --c-ink: #e8f1f3;
-    --c-ink-soft: #a9c0c7;
-    --c-line: #3b5a66;
-    --c-vardar: #5fb3d4;
-    --c-vardar-ink: #0e1f26;
-    --c-ok: #5cc48f;
-    --c-issue: #ff9a6a;
-    --c-unknown: #b0b4f0;
-    --c-route-1: #56b4e9;
-    --c-route-2: #e69f00;
-    --c-route-3: #cc79a7;
-    --c-focus-outer: #ffd23f;
-    --c-focus-inner: #0e1f26;
+    --c-canvas: #000000;
+    --c-card: #1c1c1e;
+    --c-fill: #2c2c2e;
+    --c-fill-strong: #3a3a3c;
+    --c-ink: #f5f5f7;
+    --c-ink-2: #d2d2d7;
+    --c-muted: #a1a1a6;
+    --c-hairline: #38383a;
+    --c-control: #8e8e93;
+    --c-accent: #0071e3;
+    --c-accent-hover: #0077ed;
+    --c-accent-ink: #ffffff;
+    --c-link: #2997ff;
+    --c-tint: #0a2540;
+    --c-ok: #30d158;
+    --c-issue: #ff6961;
+    --c-caution: #ffb340;
+    --c-unknown: #a5a3ff;
+    --c-route-1: #409cff;
+    --c-route-2: #ffb340;
+    --c-route-3: #da8fff;
+    --c-bar: #1c1c1e;
+    --c-bar-ink: #f5f5f7;
+    --c-bar-muted: #a1a1a6;
+    --c-glass: rgb(28 28 30 / 0.84);
+    --c-focus: #2997ff;
+    --c-switch-on: #248a3d;
+    --shadow-card: none;
+    --shadow-float: 0 8px 32px rgb(0 0 0 / 0.5);
     color-scheme: dark;
   }
 }
 
 :root[data-theme="dark"] {
-  --c-bg: #0e1f26;
-  --c-surface: #142a33;
-  --c-surface-2: #1c3742;
-  --c-ink: #e8f1f3;
-  --c-ink-soft: #a9c0c7;
-  --c-line: #3b5a66;
-  --c-vardar: #5fb3d4;
-  --c-vardar-ink: #0e1f26;
-  --c-ok: #5cc48f;
-  --c-issue: #ff9a6a;
-  --c-unknown: #b0b4f0;
-  --c-route-1: #56b4e9;
-  --c-route-2: #e69f00;
-  --c-route-3: #cc79a7;
-  --c-focus-outer: #ffd23f;
-  --c-focus-inner: #0e1f26;
+  --c-canvas: #000000;
+  --c-card: #1c1c1e;
+  --c-fill: #2c2c2e;
+  --c-fill-strong: #3a3a3c;
+  --c-ink: #f5f5f7;
+  --c-ink-2: #d2d2d7;
+  --c-muted: #a1a1a6;
+  --c-hairline: #38383a;
+  --c-control: #8e8e93;
+  --c-accent: #0071e3;
+  --c-accent-hover: #0077ed;
+  --c-accent-ink: #ffffff;
+  --c-link: #2997ff;
+  --c-tint: #0a2540;
+  --c-ok: #30d158;
+  --c-issue: #ff6961;
+  --c-caution: #ffb340;
+  --c-unknown: #a5a3ff;
+  --c-route-1: #409cff;
+  --c-route-2: #ffb340;
+  --c-route-3: #da8fff;
+  --c-bar: #1c1c1e;
+  --c-bar-ink: #f5f5f7;
+  --c-bar-muted: #a1a1a6;
+  --c-glass: rgb(28 28 30 / 0.84);
+  --c-focus: #2997ff;
+  --c-switch-on: #248a3d;
+  --shadow-card: none;
+  --shadow-float: 0 8px 32px rgb(0 0 0 / 0.5);
   color-scheme: dark;
 }
 
-/* High contrast: pure black/white, yellow signal colour, thicker borders. */
+/* High contrast (like "Increase Contrast"): pure black/white, a yellow signal
+   colour, solid materials and visible 2px outlines on every container. */
 :root[data-theme="contrast"] {
-  --c-bg: #000000;
-  --c-surface: #000000;
-  --c-surface-2: #1a1a1a;
+  --c-canvas: #000000;
+  --c-card: #000000;
+  --c-fill: #1a1a1a;
+  --c-fill-strong: #333333;
   --c-ink: #ffffff;
-  --c-ink-soft: #ffffff;
-  --c-line: #ffffff;
-  --c-vardar: #ffe600;
-  --c-vardar-ink: #000000;
-  --c-tactile: #ffe600;
-  --c-tactile-ink: #000000;
+  --c-ink-2: #ffffff;
+  --c-muted: #ffffff;
+  --c-hairline: #ffffff;
+  --c-control: #ffffff;
+  --c-accent: #ffe600;
+  --c-accent-hover: #fff176;
+  --c-accent-ink: #000000;
+  --c-link: #ffe600;
+  --c-tint: #262200;
   --c-ok: #7dff9e;
   --c-issue: #ffb38a;
+  --c-caution: #ffd36e;
   --c-unknown: #c9ccff;
   --c-route-1: #ffe600;
   --c-route-2: #00e5ff;
   --c-route-3: #ff8cf0;
-  --c-focus-outer: #ffe600;
-  --c-focus-inner: #000000;
-  --border-w: 2px;
+  --c-bar: #000000;
+  --c-bar-ink: #ffffff;
+  --c-bar-muted: #ffffff;
+  --c-glass: #000000;
+  --c-focus: #ffe600;
+  --c-switch-on: #ffe600;
+  --hair: 2px;
+  --shadow-card: none;
+  --shadow-float: none;
   color-scheme: dark;
 }
 
 @theme {
-  --font-sans: "Fira Sans", system-ui, sans-serif;
-  --font-display: "Fira Sans Condensed", "Fira Sans", system-ui, sans-serif;
-  --color-bg: var(--c-bg);
-  --color-surface: var(--c-surface);
-  --color-surface-2: var(--c-surface-2);
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter Variable", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter Variable", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --color-canvas: var(--c-canvas);
+  --color-card: var(--c-card);
+  --color-fill: var(--c-fill);
+  --color-fill-strong: var(--c-fill-strong);
   --color-ink: var(--c-ink);
-  --color-ink-soft: var(--c-ink-soft);
-  --color-line: var(--c-line);
-  --color-vardar: var(--c-vardar);
-  --color-vardar-ink: var(--c-vardar-ink);
-  --color-tactile: var(--c-tactile);
-  --color-tactile-ink: var(--c-tactile-ink);
+  --color-ink-2: var(--c-ink-2);
+  --color-muted: var(--c-muted);
+  --color-hairline: var(--c-hairline);
+  --color-control: var(--c-control);
+  --color-accent: var(--c-accent);
+  --color-accent-hover: var(--c-accent-hover);
+  --color-accent-ink: var(--c-accent-ink);
+  --color-link: var(--c-link);
+  --color-tint: var(--c-tint);
   --color-ok: var(--c-ok);
   --color-issue: var(--c-issue);
+  --color-caution: var(--c-caution);
   --color-unknown: var(--c-unknown);
+  --color-bar: var(--c-bar);
+  --color-bar-ink: var(--c-bar-ink);
+  --color-bar-muted: var(--c-bar-muted);
+  --radius-card: 18px;
+  --radius-panel: 28px;
+  --radius-pill: 980px;
+  --ease-apple: cubic-bezier(0.28, 0, 0.22, 1);
 }
 
-/* Text size is a user setting applied to the root, so every rem scales. */
+@layer base {
+/* Text size is a user setting applied to the root, so every rem scales.
+   Apple's reading baseline is 17px rather than the web's 16px. */
 html {
   font-size: calc(100% * var(--text-scale, 1));
   -webkit-text-size-adjust: 100%;
 }
 
 body {
-  background: var(--c-bg);
+  background: var(--c-canvas);
   color: var(--c-ink);
   font-family: var(--font-sans);
-  line-height: 1.55;
+  font-size: 1.0625rem;
+  line-height: 1.47;
+  letter-spacing: -0.01em;
   font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* Optional wider spacing (helps some readers with dyslexia or low vision). */
@@ -144,18 +211,25 @@ body {
   line-height: 1.8;
 }
 
-h1, h2, h3 {
+h1, h2, h3, h4 {
   font-family: var(--font-display);
-  line-height: 1.15;
-  letter-spacing: -0.005em;
+  font-weight: 600;
+  line-height: 1.12;
+  letter-spacing: -0.015em;
+}
+:root[data-spacing="wide"] :is(h1, h2, h3, h4) {
+  letter-spacing: 0.02em;
+  line-height: 1.35;
 }
 
-/* Focus: a two-tone ring visible on any background (WCAG 2.4.7 / 2.4.13). */
+a { color: inherit; }
+
+/* Focus: a thick accent ring with a canvas-coloured gap, visible on any
+   background (WCAG 2.4.7 / 2.4.13). */
 :focus-visible {
-  outline: 3px solid var(--c-focus-inner);
+  outline: 3px solid var(--c-focus);
   outline-offset: 2px;
-  box-shadow: 0 0 0 5px var(--c-focus-outer);
-  border-radius: 4px;
+  border-radius: 6px;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -181,28 +255,215 @@ h1, h2, h3 {
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
-
-/* Hairline that respects the theme's border weight. */
-.rule {
-  border-color: var(--c-line);
-  border-width: var(--border-w);
 }
 
-/* MapLibre controls: large targets and theme colours. */
+/* ---------------------------------------------------------------------------
+   Materials
+   --------------------------------------------------------------------------- */
+
+/* Inset grouped container (iOS Settings style). Utilities, so they take
+   responsive variants (lg:glass). */
+@utility card {
+  background: var(--c-card);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  :root[data-theme="contrast"] & {
+    outline: var(--hair) solid var(--c-hairline);
+  }
+}
+
+/* Rows inside a grouped container are separated by inset hairlines. */
+.rows > * + * {
+  border-top: var(--hair) solid var(--c-hairline);
+}
+
+/* Translucent material for chrome floating over the map. */
+@utility glass {
+  background: var(--c-glass);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
+  box-shadow: var(--shadow-float);
+  :root[data-theme="contrast"] & {
+    outline: var(--hair) solid var(--c-hairline);
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    background: var(--c-card);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+@layer components {
+/* ---------------------------------------------------------------------------
+   Controls
+   --------------------------------------------------------------------------- */
+
+/* On/off switch. Semantically a checkbox; state shows by knob position and
+   an "I" mark, not by colour alone. */
+.switch {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  flex-shrink: 0;
+  width: 51px;
+  height: 31px;
+  border-radius: var(--radius-pill);
+  background: var(--c-fill-strong);
+  box-shadow: inset 0 0 0 var(--hair) var(--c-control);
+  cursor: pointer;
+  transition: background-color 200ms var(--ease-apple);
+}
+.switch::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 27px;
+  height: 27px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 3px 8px rgb(0 0 0 / 0.15), 0 1px 1px rgb(0 0 0 / 0.16);
+  transition: transform 200ms var(--ease-apple);
+}
+.switch:checked {
+  background: var(--c-switch-on);
+  box-shadow: none;
+}
+.switch:checked::before {
+  transform: translateX(20px);
+}
+.switch:checked::after {
+  content: "";
+  position: absolute;
+  left: 12px;
+  top: 10px;
+  width: 2px;
+  height: 11px;
+  border-radius: 1px;
+  background: #ffffff;
+}
+:root[data-theme="contrast"] .switch:checked::before { background: #000000; }
+:root[data-theme="contrast"] .switch:checked::after { background: #000000; }
+.switch:focus-visible { border-radius: var(--radius-pill); }
+
+/* Single choice in a list: a checkmark on the chosen row (iOS). The radio
+   keeps its native semantics and focus. */
+.check-radio {
+  appearance: none;
+  -webkit-appearance: none;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid var(--c-control);
+  cursor: pointer;
+  display: grid;
+  place-content: center;
+}
+.check-radio:checked {
+  border-color: var(--c-accent);
+  background: var(--c-accent);
+}
+.check-radio:checked::before {
+  content: "";
+  width: 6px;
+  height: 11px;
+  margin-top: -2px;
+  border: solid var(--c-accent-ink);
+  border-width: 0 2.5px 2.5px 0;
+  transform: rotate(45deg);
+}
+.check-radio:focus-visible { border-radius: 50%; }
+
+@media (forced-colors: active) {
+  .switch, .check-radio { forced-color-adjust: none; border: 2px solid CanvasText; background: Canvas; }
+  .switch::before { background: CanvasText; }
+  .switch:checked, .check-radio:checked { background: Highlight; }
+  .check-radio:checked::before { border-color: HighlightText; }
+}
+
+/* Native select restyled as a pop-up button with a chevron. */
+.select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-color: var(--c-fill);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5 6 7.5 9 4.5' fill='none' stroke='%236e6e73' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  padding-right: 2.25rem;
+}
+/* Lighter chevron on dark fills (3:1 against the control). */
+:root[data-theme="dark"] .select,
+:root[data-theme="contrast"] .select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5 6 7.5 9 4.5' fill='none' stroke='%23d2d2d7' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+:root[data-theme="contrast"] .select {
+  box-shadow: inset 0 0 0 var(--hair) var(--c-hairline);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .select,
+  :root[data-theme="system"] .select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5 6 7.5 9 4.5' fill='none' stroke='%23d2d2d7' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  }
+}
+
+.field {
+  background: var(--c-card);
+  border: var(--hair) solid var(--c-control);
+  border-radius: 12px;
+  color: var(--c-ink);
+  transition: border-color 150ms var(--ease-apple), box-shadow 150ms var(--ease-apple);
+}
+.field::placeholder { color: var(--c-muted); opacity: 1; }
+.field:focus-visible {
+  outline: none;
+  border-color: var(--c-accent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--c-focus) 35%, transparent);
+}
+:root[data-theme="contrast"] .field:focus-visible {
+  outline: 3px solid var(--c-focus);
+  outline-offset: 2px;
+}
+}
+
+/* ---------------------------------------------------------------------------
+   MapLibre: large targets, glass controls.
+   --------------------------------------------------------------------------- */
+.maplibregl-ctrl-group {
+  border-radius: 14px !important;
+  overflow: hidden;
+  background: var(--c-glass) !important;
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
+  box-shadow: var(--shadow-float) !important;
+}
 .maplibregl-ctrl-group button {
   width: 44px !important;
   height: 44px !important;
+}
+.maplibregl-ctrl-group button + button {
+  border-top-color: var(--c-hairline) !important;
+}
+.maplibregl-ctrl-group button .maplibregl-ctrl-icon {
+  filter: var(--map-icon-filter, none);
+}
+:root[data-theme="dark"], :root[data-theme="contrast"] { --map-icon-filter: invert(1); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]), :root[data-theme="system"] { --map-icon-filter: invert(1); }
 }
 .maplibregl-ctrl-attrib {
   font-size: 0.75rem;
 }
 .maplibregl-canvas:focus-visible {
-  outline: 3px solid var(--c-focus-inner);
-  outline-offset: -6px;
-  box-shadow: inset 0 0 0 6px var(--c-focus-outer);
+  outline: 3px solid var(--c-focus);
+  outline-offset: -3px;
+  border-radius: 0;
 }
 
-/* The route line diagram (signature element). */
+/* ---------------------------------------------------------------------------
+   Route steps as a directions list: a coloured rail with one stop per step.
+   It is an ordered list, so screen readers announce "list, N items".
+   --------------------------------------------------------------------------- */
 .route-line {
   --line-color: var(--c-route-1);
   position: relative;
@@ -214,43 +475,52 @@ h1, h2, h3 {
 .route-line > li::before {
   content: "";
   position: absolute;
-  left: 1.05rem;
+  left: 1.1rem;
   top: 0;
   bottom: 0;
-  width: 0.45rem;
+  width: 0.3rem;
+  border-radius: 0.15rem;
   background: var(--line-color);
 }
-.route-line > li:first-child::before { top: 1.4rem; }
-.route-line > li:last-child::before { bottom: calc(100% - 1.4rem); }
+.route-line > li:first-child::before { top: 1.25rem; }
+.route-line > li:last-child::before { bottom: calc(100% - 1.25rem); }
 .route-line .stop {
   position: absolute;
-  left: 0.3rem;
-  top: 0.45rem;
-  width: 2rem;
-  height: 2rem;
+  left: 0.375rem;
+  top: 0.4rem;
+  width: 1.75rem;
+  height: 1.75rem;
   display: grid;
   place-items: center;
   border-radius: 999px;
-  background: var(--c-surface);
-  border: 0.3rem solid var(--line-color);
+  background: var(--c-card);
+  border: 0.2rem solid var(--line-color);
   color: var(--c-ink);
   font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 0.85rem;
+  font-weight: 600;
+  font-size: 0.75rem;
 }
 .route-line .stop[data-kind="CROSS"] {
-  border-radius: 4px;
-  background: repeating-linear-gradient(90deg, var(--c-ink) 0 3px, var(--c-surface) 3px 6px);
+  border-radius: 6px;
+  background: repeating-linear-gradient(90deg, var(--c-ink) 0 3px, var(--c-card) 3px 6px);
 }
 .route-line .stop[data-kind="STAIRS"] {
-  border-radius: 4px;
+  border-radius: 6px;
 }
 .route-line > li[aria-current="step"] .stop {
-  background: var(--c-tactile);
-  color: var(--c-tactile-ink);
+  background: var(--c-accent);
+  border-color: var(--c-accent);
+  color: var(--c-accent-ink);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--c-accent) 25%, transparent);
 }
 
 @media (forced-colors: active) {
   .route-line > li::before { background: CanvasText; }
   .route-line .stop { border-color: CanvasText; forced-color-adjust: none; }
+}
+
+/* Scroll area inside the floating panel keeps the rounded corners. */
+.panel-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--c-fill-strong) transparent;
 }

@@ -1,8 +1,18 @@
+import { Accessibility, Eye, Footprints, PersonStanding, SlidersHorizontal } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Profile, ProfileCode, RoutingPreferences } from '../api/types';
-import { Button, Checkbox, RadioGroup, Select } from './ui';
+import { Button, Checkbox, Footnote, Group, RadioGroup, Select } from './ui';
 
 export const PROFILE_ORDER: ProfileCode[] = ['STANDARD', 'WHEELCHAIR', 'VISUALLY_IMPAIRED', 'REDUCED_MOBILITY', 'CUSTOM'];
+
+const PROFILE_ICONS: Record<ProfileCode, ReactNode> = {
+  STANDARD: <Footprints className="size-5" />,
+  WHEELCHAIR: <Accessibility className="size-5" />,
+  VISUALLY_IMPAIRED: <Eye className="size-5" />,
+  REDUCED_MOBILITY: <PersonStanding className="size-5" />,
+  CUSTOM: <SlidersHorizontal className="size-5" />,
+};
 
 type BoolKey = {
   [K in keyof RoutingPreferences]-?: RoutingPreferences[K] extends boolean | null | undefined ? K : never;
@@ -35,6 +45,7 @@ export function ProfilePicker({ value, onChange }: { value: ProfileCode; onChang
         value: p,
         label: t(`plan.profiles.${p}.name`),
         description: t(`plan.profiles.${p}.desc`),
+        icon: PROFILE_ICONS[p],
       }))}
     />
   );
@@ -57,53 +68,57 @@ export function PreferencesEditor({ profile, overrides, onChange }: {
   const changed = Object.keys(overrides).length > 0;
 
   return (
-    <div className="flex flex-col gap-5">
-      <p className="text-sm text-ink-soft">{t('prefs.unknownNote')}</p>
+    <div className="flex flex-col gap-6">
+      <Footnote>{t('prefs.unknownNote')}</Footnote>
       <fieldset>
-        <legend className="font-display text-lg font-semibold">{t('prefs.requirements')}</legend>
-        <p className="mb-1 text-sm text-ink-soft">{t('prefs.requirementsHint')}</p>
-        {REQUIREMENT_FLAGS.map((k) => (
-          <Checkbox key={k} label={t(`prefs.${k}`)} checked={!!p[k]} onChange={(v) => set({ [k]: v })} />
-        ))}
-        <Select
-          label={t('prefs.maxInclinePct')}
-          value={fmt(p.maxInclinePct)}
-          onChange={(v) => set({ maxInclinePct: num(v) })}
-          options={INCLINES.map((v) => ({ value: v, label: v === '' ? t('prefs.noLimit') : `${v} %` }))}
-        />
-        <Select
-          label={t('prefs.minWidthM')}
-          value={fmt(p.minWidthM)}
-          onChange={(v) => set({ minWidthM: num(v) })}
-          options={WIDTHS.map((v) => ({ value: v, label: v === '' ? t('prefs.noLimit') : `${v.replace('.', ',')} m` }))}
-        />
-        {p.wheeled && (
+        <legend className="px-1 font-display text-[1.0625rem] font-semibold">{t('prefs.requirements')}</legend>
+        <Footnote className="mb-2">{t('prefs.requirementsHint')}</Footnote>
+        <Group>
+          {REQUIREMENT_FLAGS.map((k) => (
+            <Checkbox key={k} label={t(`prefs.${k}`)} checked={!!p[k]} onChange={(v) => set({ [k]: v })} />
+          ))}
           <Select
-            label={t('prefs.maxKerbHeightCm')}
-            value={fmt(p.maxKerbHeightCm ?? 3)}
-            onChange={(v) => set({ maxKerbHeightCm: num(v) })}
-            options={KERBS.filter((v) => v !== '').map((v) => ({ value: v, label: `${v} cm` }))}
+            label={t('prefs.maxInclinePct')}
+            value={fmt(p.maxInclinePct)}
+            onChange={(v) => set({ maxInclinePct: num(v) })}
+            options={INCLINES.map((v) => ({ value: v, label: v === '' ? t('prefs.noLimit') : `${v} %` }))}
           />
-        )}
+          <Select
+            label={t('prefs.minWidthM')}
+            value={fmt(p.minWidthM)}
+            onChange={(v) => set({ minWidthM: num(v) })}
+            options={WIDTHS.map((v) => ({ value: v, label: v === '' ? t('prefs.noLimit') : `${v.replace('.', ',')} m` }))}
+          />
+          {p.wheeled && (
+            <Select
+              label={t('prefs.maxKerbHeightCm')}
+              value={fmt(p.maxKerbHeightCm ?? 3)}
+              onChange={(v) => set({ maxKerbHeightCm: num(v) })}
+              options={KERBS.filter((v) => v !== '').map((v) => ({ value: v, label: `${v} cm` }))}
+            />
+          )}
+        </Group>
       </fieldset>
       <fieldset>
-        <legend className="font-display text-lg font-semibold">{t('prefs.preferences')}</legend>
-        <p className="mb-1 text-sm text-ink-soft">{t('prefs.preferencesHint')}</p>
-        {PREFERENCE_FLAGS.map((k) => (
-          <Checkbox key={k} label={t(`prefs.${k}`)} checked={!!p[k]} onChange={(v) => set({ [k]: v })} />
-        ))}
-        <Select
-          label={t('prefs.walkingSpeedMps')}
-          value={SPEEDS.reduce((best, s) =>
-            Math.abs(Number(s) - (p.walkingSpeedMps ?? 1.2)) < Math.abs(Number(best) - (p.walkingSpeedMps ?? 1.2)) ? s : best)}
-          onChange={(v) => set({ walkingSpeedMps: Number(v) })}
-          options={SPEEDS.map((v) => ({ value: v, label: t(`prefs.speeds.${v}`) }))}
-        />
+        <legend className="px-1 font-display text-[1.0625rem] font-semibold">{t('prefs.preferences')}</legend>
+        <Footnote className="mb-2">{t('prefs.preferencesHint')}</Footnote>
+        <Group>
+          {PREFERENCE_FLAGS.map((k) => (
+            <Checkbox key={k} label={t(`prefs.${k}`)} checked={!!p[k]} onChange={(v) => set({ [k]: v })} />
+          ))}
+          <Select
+            label={t('prefs.walkingSpeedMps')}
+            value={SPEEDS.reduce((best, s) =>
+              Math.abs(Number(s) - (p.walkingSpeedMps ?? 1.2)) < Math.abs(Number(best) - (p.walkingSpeedMps ?? 1.2)) ? s : best)}
+            onChange={(v) => set({ walkingSpeedMps: Number(v) })}
+            options={SPEEDS.map((v) => ({ value: v, label: t(`prefs.speeds.${v}`) }))}
+          />
+        </Group>
       </fieldset>
       {changed && (
-        <div>
-          <p className="text-sm text-ink-soft">{t('prefs.changed')}</p>
-          <Button variant="quiet" onClick={() => onChange({})} className="mt-1 underline">{t('prefs.resetToProfile')}</Button>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <Footnote>{t('prefs.changed')}</Footnote>
+          <Button variant="quiet" onClick={() => onChange({})}>{t('prefs.resetToProfile')}</Button>
         </div>
       )}
     </div>

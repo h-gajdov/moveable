@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { BrowserRouter, Route, Routes } from 'react-router';
 import { AnnouncerProvider } from './components/Announcer';
 import { Layout } from './components/Layout';
+import { PageTitle } from './components/ui';
 import { PlanPage } from './pages/PlanPage';
 import { SettingsProvider } from './settings/SettingsContext';
 import { TripProvider } from './settings/TripContext';
@@ -25,15 +26,14 @@ function NotFound() {
   const { t } = useTranslation();
   return (
     <Layout title={t('notFound.title')}>
-      <h1 className="text-3xl font-bold">{t('notFound.title')}</h1>
-      <p className="mt-2">{t('notFound.body')}</p>
+      <PageTitle subtitle={t('notFound.body')}>{t('notFound.title')}</PageTitle>
     </Layout>
   );
 }
 
 function Loading() {
   const { t } = useTranslation();
-  return <p role="status" className="p-6">{t('common.loading')}</p>;
+  return <p role="status" className="p-6 text-muted">{t('common.loading')}</p>;
 }
 
 export function AppRoutes() {

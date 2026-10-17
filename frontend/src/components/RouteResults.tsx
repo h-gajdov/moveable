@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
-import { Navigation } from 'lucide-react';
-import { useEffect, useRef } from 'react';
+import { CircleAlert, Info, MapPinned, Navigation, TriangleAlert } from 'lucide-react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import { api } from '../api/client';
@@ -9,15 +9,15 @@ import { currentLanguage } from '../i18n';
 import { formatDate, formatDistance, formatDuration } from '../lib/format';
 import { useAnnounce } from './Announcer';
 import { RouteLine } from './RouteLine';
-import { Button, StatusMark } from './ui';
+import { Button, Notice, StatusMark } from './ui';
 
 export const ROUTE_COLORS = ['var(--c-route-1)', 'var(--c-route-2)', 'var(--c-route-3)'];
 
 function LineSample({ n }: { n: number }) {
   const dash = n === 0 ? undefined : n === 1 ? '10 6' : '2 6';
   return (
-    <svg aria-hidden="true" width="44" height="12" className="shrink-0">
-      <line x1="2" y1="6" x2="42" y2="6" stroke={ROUTE_COLORS[n]} strokeWidth="6" strokeDasharray={dash} strokeLinecap="round" />
+    <svg aria-hidden="true" width="40" height="10" className="shrink-0">
+      <line x1="3" y1="5" x2="37" y2="5" stroke={ROUTE_COLORS[n]} strokeWidth="5" strokeDasharray={dash} strokeLinecap="round" />
     </svg>
   );
 }
@@ -29,6 +29,26 @@ function warningText(w: Warning, t: ReturnType<typeof useTranslation>['t'], lang
     defaultValue: w.code,
   });
 }
+
+function suitabilityStatus(level: RouteOption['suitability']['level']) {
+  return level === 'NO_KNOWN_ISSUES' ? 'OK' : level === 'HAS_KNOWN_ISSUES' ? 'PROBLEM' : 'UNKNOWN';
+}
+
+/** A titled grouped section inside the route detail. */
+function DetailSection({ id, title, children }: { id: string; title: string; children: ReactNode }) {
+  return (
+    <section aria-labelledby={id}>
+      <h4 id={id} className="mb-2 px-1 text-[1.0625rem]">{title}</h4>
+      {children}
+    </section>
+  );
+}
+
+const SEVERITY_ICON = {
+  WARNING: <TriangleAlert aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-issue" />,
+  CAUTION: <CircleAlert aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-caution" />,
+  INFO: <Info aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-muted" />,
+} as const;
 
 export function RouteResults({ response, selectedId, onSelect, onFocusLocation, onAdjustNeeds }: {
   response: RouteResponse;
@@ -43,7 +63,9 @@ export function RouteResults({ response, selectedId, onSelect, onFocusLocation, 
   const headingRef = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
-    headingRef.current?.focus();
+    // Focus the heading and bring the results to the top of the panel/page.
+    headingRef.current?.focus({ preventScroll: true });
+    headingRef.current?.scrollIntoView?.({ block: 'start' });
     if (response.routes.length > 0) {
       const r = response.routes[0];
       announce(`${t('results.count', { count: response.routes.length })} ${t('results.distanceDuration', {
@@ -59,16 +81,20 @@ export function RouteResults({ response, selectedId, onSelect, onFocusLocation, 
   if (response.routes.length === 0 && response.noRoute) {
     const nr = response.noRoute;
     return (
-      <section aria-labelledby="no-route-h" className="rounded-lg border-2 border-issue bg-surface p-4">
-        <h2 id="no-route-h" ref={headingRef} tabIndex={-1} className="text-2xl font-bold">{t('noRoute.title')}</h2>
-        <p className="mt-2">{t(`noRoute.${nr.reason}`, { defaultValue: t('errors.default') })}</p>
+      <section aria-labelledby="no-route-h" className="card p-5 ring-[length:var(--hair)] ring-issue">
+        <div className="flex items-start gap-3">
+          <StatusMark status="PROBLEM" size="lg" />
+          <h2 id="no-route-h" ref={headingRef} tabIndex={-1} className="scroll-mt-6 text-[1.5rem]">{t('noRoute.title')}</h2>
+        </div>
+        <p className="mt-3">{t(`noRoute.${nr.reason}`, { defaultValue: t('errors.default') })}</p>
         {nr.blockingFeatures.length > 0 && (
-          <ul className="mt-2 list-disc pl-6">
+          <ul className="rows mt-3 rounded-[14px] bg-fill px-3.5">
             {nr.blockingFeatures.map((b) => (
-              <li key={b.type}>
-                {t(`noRoute.blocking.${b.type}`, { count: b.count })}
+              <li key={b.type} className="flex min-h-11 flex-wrap items-center justify-between gap-x-3 py-1.5">
+                <span className="font-medium">{t(`noRoute.blocking.${b.type}`, { count: b.count })}</span>
                 {onFocusLocation && b.locations[0] && (
-                  <Button variant="quiet" className="ml-2 underline" onClick={() => onFocusLocation(b.locations[0])}>
+                  <Button variant="quiet" className="-mr-3" icon={<MapPinned aria-hidden="true" className="size-4.5" />}
+                    onClick={() => onFocusLocation(b.locations[0])}>
                     {t('warning.showOnMap')}
                   </Button>
                 )}
@@ -77,10 +103,10 @@ export function RouteResults({ response, selectedId, onSelect, onFocusLocation, 
           </ul>
         )}
         {nr.shortestUnconstrainedM != null && (
-          <p className="mt-2">{t('noRoute.shortest', { distance: formatDistance(nr.shortestUnconstrainedM, lang) })}</p>
+          <p className="mt-3">{t('noRoute.shortest', { distance: formatDistance(nr.shortestUnconstrainedM, lang) })}</p>
         )}
-        <p className="mt-2 text-ink-soft">{t('noRoute.whatNext')}</p>
-        {onAdjustNeeds && <Button className="mt-3" onClick={onAdjustNeeds}>{t('noRoute.adjust')}</Button>}
+        <p className="mt-3 text-muted">{t('noRoute.whatNext')}</p>
+        {onAdjustNeeds && <Button className="mt-4" variant="tinted" onClick={onAdjustNeeds}>{t('noRoute.adjust')}</Button>}
       </section>
     );
   }
@@ -89,38 +115,45 @@ export function RouteResults({ response, selectedId, onSelect, onFocusLocation, 
   const selectedIndex = response.routes.indexOf(selected);
 
   return (
-    <section aria-labelledby="results-h" className="flex flex-col gap-6">
-      <div>
-        <h2 id="results-h" ref={headingRef} tabIndex={-1} className="text-2xl font-bold">{t('results.title')}</h2>
-        <p className="text-ink-soft">{t('results.count', { count: response.routes.length })}</p>
+    <section aria-labelledby="results-h" className="flex flex-col gap-5">
+      <div className="px-1">
+        <h2 id="results-h" ref={headingRef} tabIndex={-1} className="scroll-mt-6 text-[1.75rem]">{t('results.title')}</h2>
+        <p className="text-muted">{t('results.count', { count: response.routes.length })}</p>
       </div>
 
       {response.routes.length > 1 && (
         <fieldset>
           <legend className="sr-only">{t('results.choose')}</legend>
           <div className="flex flex-col gap-2">
-            {response.routes.map((r, i) => (
-              <label
-                key={r.id}
-                className={`flex cursor-pointer items-start gap-3 rounded-lg border-2 p-3 ${
-                  r.id === selected.id ? 'border-vardar bg-surface' : 'border-line bg-surface hover:bg-surface-2'}`}
-              >
-                <input
-                  type="radio" name="route" className="mt-1 size-6 shrink-0 accent-[var(--c-vardar)]"
-                  checked={r.id === selected.id} onChange={() => onSelect(r.id)}
-                />
-                <span className="flex flex-col gap-0.5">
-                  <span className="flex flex-wrap items-center gap-2 font-display text-lg font-bold">
-                    <LineSample n={i} />
-                    {r.kinds.map((k) => t(`results.kinds.${k}`)).join(', ')}
+            {response.routes.map((r, i) => {
+              const on = r.id === selected.id;
+              return (
+                <label
+                  key={r.id}
+                  className={`card flex cursor-pointer items-center gap-3 p-4 transition-shadow has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--c-focus)] ${
+                    on ? 'ring-2 ring-accent' : 'hover:ring-[length:var(--hair)] hover:ring-hairline'}`}
+                >
+                  <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                    <span className="flex flex-wrap items-baseline gap-x-2">
+                      <span className="font-display text-[1.375rem] font-semibold tracking-[-0.01em]">{formatDuration(r.durationS, t)}</span>
+                      <span className="text-muted">{formatDistance(r.distanceM, lang)}</span>
+                    </span>
+                    <span className="flex flex-wrap items-center gap-2 font-medium">
+                      <LineSample n={i} />
+                      {r.kinds.map((k) => t(`results.kinds.${k}`)).join(', ')}
+                    </span>
+                    <span className="text-[0.875rem] text-muted">
+                      <span className="sr-only">{t('results.distanceDuration', { distance: formatDistance(r.distanceM, lang), duration: formatDuration(r.durationS, t) })}. </span>
+                      {t('results.routeName', { n: i + 1 })}, {t(`results.lineStyle.${i + 1}`)}. {t(`results.suitability.${r.suitability.level}`)}
+                    </span>
                   </span>
-                  <span>{t('results.distanceDuration', { distance: formatDistance(r.distanceM, lang), duration: formatDuration(r.durationS, t) })}</span>
-                  <span className="text-sm text-ink-soft">
-                    {t('results.routeName', { n: i + 1 })}, {t(`results.lineStyle.${i + 1}`)}. {t(`results.suitability.${r.suitability.level}`)}
-                  </span>
-                </span>
-              </label>
-            ))}
+                  <input
+                    type="radio" name="route" className="check-radio"
+                    checked={on} onChange={() => onSelect(r.id)}
+                  />
+                </label>
+              );
+            })}
           </div>
         </fieldset>
       )}
@@ -147,94 +180,101 @@ function RouteDetail({ route, index, response, onFocusLocation }: {
 
   return (
     <article aria-labelledby="route-detail-h" className="flex flex-col gap-6">
-      <header className="border-l-8 pl-4" style={{ borderColor: ROUTE_COLORS[index] }}>
-        <h3 id="route-detail-h" className="text-xl font-bold">
-          {route.kinds.map((k) => t(`results.kinds.${k}`)).join(', ')}
-        </h3>
-        <p className="font-display text-3xl font-bold">
-          {formatDistance(route.distanceM, lang)}
-          <span className="ml-3 text-xl font-semibold text-ink-soft">{formatDuration(route.durationS, t)}</span>
-        </p>
-        <p className="mt-1 flex items-center gap-2 font-medium">
-          <StatusMark status={route.suitability.level === 'NO_KNOWN_ISSUES' ? 'OK' : route.suitability.level === 'HAS_KNOWN_ISSUES' ? 'PROBLEM' : 'UNKNOWN'} />
-          {t(`results.suitability.${route.suitability.level}`)}
-        </p>
-        <Button variant="primary" className="mt-3" icon={<Navigation aria-hidden="true" className="size-5" />} onClick={() => navigate('/navigate')}>
-          {t('results.startNavigation')}
-        </Button>
+      <header className="card overflow-hidden">
+        <div aria-hidden="true" className="h-1.5" style={{ background: ROUTE_COLORS[index] }} />
+        <div className="p-5">
+          <h3 id="route-detail-h" className="text-[0.9375rem] font-semibold text-muted">
+            {route.kinds.map((k) => t(`results.kinds.${k}`)).join(', ')}
+          </h3>
+          <p className="mt-1 font-display text-[2.5rem] font-semibold leading-none tracking-[-0.02em]">
+            {formatDuration(route.durationS, t)}
+          </p>
+          <p className="mt-1.5 text-[1.0625rem] text-muted">{formatDistance(route.distanceM, lang)}</p>
+          <p className="mt-3 flex items-center gap-2 font-medium">
+            <StatusMark status={suitabilityStatus(route.suitability.level)} />
+            {t(`results.suitability.${route.suitability.level}`)}
+          </p>
+          <Button variant="primary" size="lg" className="mt-4 w-full" icon={<Navigation aria-hidden="true" className="size-5" />}
+            onClick={() => navigate('/navigate')}>
+            {t('results.startNavigation')}
+          </Button>
+        </div>
       </header>
 
-      <p className="rounded-lg bg-surface-2 p-3 text-sm">
+      <Notice icon={<Info aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-muted" />}>
         {t('results.notGuaranteed')}{' '}
         {response.dataNotice.osmDataTimestamp && t('results.dataDate', { date: formatDate(response.dataNotice.osmDataTimestamp, lang) })}
-      </p>
+      </Notice>
 
       {route.suitability.indicators.length > 0 && (
-        <section aria-labelledby="ind-h">
-          <h4 id="ind-h" className="font-display text-lg font-bold">{t('results.indicators')}</h4>
-          <ul className="mt-2 grid gap-2 sm:grid-cols-2">
+        <DetailSection id="ind-h" title={t('results.indicators')}>
+          <ul className="grid gap-2 sm:grid-cols-2">
             {route.suitability.indicators.map((ind) => (
-              <li key={ind.need} className="flex items-start gap-2">
+              <li key={ind.need} className="card flex items-start gap-2.5 p-3.5">
                 <StatusMark status={ind.status} />
-                <span>
-                  <span className="font-medium">{t(`results.need.${ind.need}`)}</span>: {t(`results.status.${ind.status}`)}
-                  {ind.detail && <span className="block text-sm text-ink-soft">{t(`results.statusDetail.${ind.detail}`)}</span>}
+                <span className="min-w-0">
+                  <span className="block font-medium">{t(`results.need.${ind.need}`)}</span>
+                  <span className="block text-[0.9375rem]">{t(`results.status.${ind.status}`)}</span>
+                  {ind.detail && <span className="block text-[0.875rem] text-muted">{t(`results.statusDetail.${ind.detail}`)}</span>}
                 </span>
               </li>
             ))}
           </ul>
-        </section>
+        </DetailSection>
       )}
 
-      <section aria-labelledby="facts-h">
-        <h4 id="facts-h" className="font-display text-lg font-bold">{t('results.facts')}</h4>
-        <ul className="mt-1 list-disc pl-6">
-          <li>{s.stairs > 0 ? t('results.fact.stairs', { count: s.stairs }) : t('results.fact.noStairs')}</li>
-          <li>{s.crossings > 0 ? t('results.fact.crossings', { count: s.crossings, signals: s.crossingsWithSignals }) : t('results.fact.noCrossings')}</li>
-          {s.benchesNearRoute > 0 && <li>{t('results.fact.benches', { count: s.benchesNearRoute })}</li>}
+      <DetailSection id="facts-h" title={t('results.facts')}>
+        <ul className="card rows px-4">
+          <li className="py-3">{s.stairs > 0 ? t('results.fact.stairs', { count: s.stairs }) : t('results.fact.noStairs')}</li>
+          <li className="py-3">{s.crossings > 0 ? t('results.fact.crossings', { count: s.crossings, signals: s.crossingsWithSignals }) : t('results.fact.noCrossings')}</li>
+          {s.benchesNearRoute > 0 && <li className="py-3">{t('results.fact.benches', { count: s.benchesNearRoute })}</li>}
           {response.origin && response.origin.snapDistanceM >= 15 && (
-            <li>{t('results.snapOrigin', { distance: formatDistance(response.origin.snapDistanceM, lang) })}</li>
+            <li className="py-3">{t('results.snapOrigin', { distance: formatDistance(response.origin.snapDistanceM, lang) })}</li>
           )}
           {response.destination && response.destination.snapDistanceM >= 15 && (
-            <li>{t('results.snapDestination', { distance: formatDistance(response.destination.snapDistanceM, lang) })}</li>
+            <li className="py-3">{t('results.snapDestination', { distance: formatDistance(response.destination.snapDistanceM, lang) })}</li>
           )}
         </ul>
-      </section>
+      </DetailSection>
 
-      <section aria-labelledby="warn-h">
-        <h4 id="warn-h" className="font-display text-lg font-bold">{t('results.warnings')}</h4>
+      <DetailSection id="warn-h" title={t('results.warnings')}>
         {warnings.length === 0 ? (
-          <p className="mt-1">{t('results.noWarnings')}</p>
+          <p className="card p-4">{t('results.noWarnings')}</p>
         ) : (
-          <ul className="mt-2 flex flex-col gap-2">
+          <ul className="card rows px-4">
             {warnings.map((w, i) => (
-              <li key={i} className={`border-l-4 pl-3 ${w.severity === 'WARNING' ? 'border-issue' : w.severity === 'CAUTION' ? 'border-unknown' : 'border-line'}`}>
-                <span className="font-semibold">{t(`warning.severity.${w.severity}`)}: </span>
-                {warningText(w, t, lang)}
-                {onFocusLocation && w.location && (
-                  <Button variant="quiet" className="ml-1 min-h-9 px-2 py-0 text-sm underline" onClick={() => onFocusLocation(w.location!)}>
-                    {t('warning.showOnMap')}
-                  </Button>
-                )}
+              <li key={i} className="flex gap-3 py-3">
+                {SEVERITY_ICON[w.severity]}
+                <div className="min-w-0 flex-1">
+                  <p>
+                    <span className="font-semibold">{t(`warning.severity.${w.severity}`)}: </span>
+                    <span>{warningText(w, t, lang)}</span>
+                  </p>
+                  {onFocusLocation && w.location && (
+                    <Button variant="quiet" className="-ml-4 mt-0.5" icon={<MapPinned aria-hidden="true" className="size-4.5" />}
+                      onClick={() => onFocusLocation(w.location!)}>
+                      {t('warning.showOnMap')}
+                    </Button>
+                  )}
+                </div>
               </li>
             ))}
           </ul>
         )}
-      </section>
+      </DetailSection>
 
       {route.obstacles.length > 0 && (
-        <section aria-labelledby="obs-h">
-          <h4 id="obs-h" className="font-display text-lg font-bold">{t('results.obstacles')}</h4>
-          <ul className="mt-2 flex flex-col gap-3">
+        <DetailSection id="obs-h" title={t('results.obstacles')}>
+          <ul className="card rows px-4">
             {route.obstacles.map((o) => (
-              <li key={o.id} className="flex flex-col gap-1">
+              <li key={o.id} className="flex flex-col gap-1 py-3">
                 <span className="font-medium">{t(`report.categories.${o.category}`)}: {t(`report.impacts.${o.impact}`)}</span>
-                <span className="text-sm">
+                <span className="text-[0.9375rem] text-muted">
                   {o.status === 'VERIFIED' ? t('results.obstacleVerified') : t('results.obstacleUnverified')}.{' '}
                   {o.affectsRouting ? t('results.obstacleAffects') : t('results.obstacleAway', { distance: formatDistance(o.distanceM, lang) })}
                 </span>
                 <span>
-                  <Button variant="secondary" className="min-h-10 text-sm" disabled={confirm.isPending || confirm.isSuccess}
+                  <Button variant="tinted" className="mt-1" disabled={confirm.isPending || confirm.isSuccess}
                     onClick={() => confirm.mutate(o.id)}>
                     {t('results.stillThere')}
                   </Button>
@@ -242,37 +282,38 @@ function RouteDetail({ route, index, response, onFocusLocation }: {
               </li>
             ))}
           </ul>
-        </section>
+        </DetailSection>
       )}
 
-      <section aria-labelledby="why-h">
-        <h4 id="why-h" className="font-display text-lg font-bold">{t('results.why')}</h4>
-        <ul className="mt-1 list-disc pl-6">
-          {route.explanation.reasons.map((r) => <li key={r}>{t(`results.reasons.${r}`, { defaultValue: r })}</li>)}
+      <DetailSection id="why-h" title={t('results.why')}>
+        <ul className="card rows px-4">
+          {route.explanation.reasons.map((r) => <li key={r} className="py-3">{t(`results.reasons.${r}`, { defaultValue: r })}</li>)}
           {route.explanation.extraDistanceM != null && route.explanation.extraDistanceM > 10 && (
-            <li>{t('results.extra', { distance: formatDistance(route.explanation.extraDistanceM, lang) })}</li>
+            <li className="py-3">{t('results.extra', { distance: formatDistance(route.explanation.extraDistanceM, lang) })}</li>
           )}
         </ul>
-      </section>
+      </DetailSection>
 
-      <section aria-labelledby="cov-h">
-        <h4 id="cov-h" className="font-display text-lg font-bold">{t('results.coverage')}</h4>
-        <p className="mt-1 flex items-center gap-2 font-medium">
-          <StatusMark status={route.coverage.level === 'GOOD' ? 'OK' : 'UNKNOWN'} />
-          {t(`results.coverageLevel.${route.coverage.level}`)}
-        </p>
-        <p className="mt-1 text-sm">
-          {t('results.coverageDetail', {
-            surface: Math.round(route.coverage.knownSurfacePct), incline: Math.round(route.coverage.mappedInclinePct),
-            estimated: Math.round(route.coverage.estimatedInclinePct), lit: Math.round(route.coverage.knownLitPct),
-          })}
-        </p>
-      </section>
+      <DetailSection id="cov-h" title={t('results.coverage')}>
+        <div className="card p-4">
+          <p className="flex items-center gap-2 font-medium">
+            <StatusMark status={route.coverage.level === 'GOOD' ? 'OK' : 'UNKNOWN'} />
+            {t(`results.coverageLevel.${route.coverage.level}`)}
+          </p>
+          <p className="mt-1.5 text-[0.9375rem] text-muted">
+            {t('results.coverageDetail', {
+              surface: Math.round(route.coverage.knownSurfacePct), incline: Math.round(route.coverage.mappedInclinePct),
+              estimated: Math.round(route.coverage.estimatedInclinePct), lit: Math.round(route.coverage.knownLitPct),
+            })}
+          </p>
+        </div>
+      </DetailSection>
 
-      <section aria-labelledby="steps-h">
-        <h4 id="steps-h" className="mb-3 font-display text-lg font-bold">{t('results.steps')}</h4>
-        <RouteLine instructions={route.instructions} color={ROUTE_COLORS[index]} />
-      </section>
+      <DetailSection id="steps-h" title={t('results.steps')}>
+        <div className="card px-2 py-3">
+          <RouteLine instructions={route.instructions} color={ROUTE_COLORS[index]} />
+        </div>
+      </DetailSection>
     </article>
   );
 }

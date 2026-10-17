@@ -1,4 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
+import { CircleAlert, CircleCheck } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../api/client';
@@ -7,7 +8,7 @@ import { useAnnounce } from '../components/Announcer';
 import { Layout } from '../components/Layout';
 import { LocationInput } from '../components/LocationInput';
 import { MapView } from '../components/MapView';
-import { Button, Checkbox, ErrorBox, RadioGroup, Select } from '../components/ui';
+import { Button, Checkbox, ErrorBox, Footnote, Group, PageTitle, RadioGroup, Select } from '../components/ui';
 import { currentLanguage } from '../i18n';
 import { useSettings } from '../settings/SettingsContext';
 import { labelForPoint, SKOPJE_CENTER, useAppConfig } from './PlanPage';
@@ -88,33 +89,40 @@ export function ReportPage() {
   if (submit.isSuccess) {
     return (
       <Layout title={t('report.success')}>
-        <h1 ref={successRef} tabIndex={-1} className="text-3xl font-bold">{t('report.success')}</h1>
-        <p className="mt-3">{t('report.successBody')}</p>
-        <Button className="mt-4" onClick={reset}>{t('report.another')}</Button>
+        <div className="card flex flex-col items-center px-6 py-10 text-center">
+          <CircleCheck aria-hidden="true" className="size-14 text-ok" strokeWidth={1.5} />
+          <h1 ref={successRef} tabIndex={-1} className="mt-4 text-[2rem]">{t('report.success')}</h1>
+          <p className="mt-2 max-w-[48ch] text-muted">{t('report.successBody')}</p>
+          <Button className="mt-6" variant="tinted" onClick={reset}>{t('report.another')}</Button>
+        </div>
       </Layout>
     );
   }
 
   const apiError = submit.error instanceof ApiError ? submit.error.code : submit.error ? 'default' : null;
+  const fieldLabel = 'px-1 font-display text-[1.0625rem] font-semibold';
+  const optional = <span className="font-sans text-[0.875rem] font-normal text-muted">({t('common.optional')})</span>;
 
   return (
     <Layout title={t('report.title')}>
-      <h1 className="text-3xl font-bold">{t('report.title')}</h1>
-      <p className="mt-2">{t('report.intro')}</p>
+      <PageTitle subtitle={t('report.intro')}>{t('report.title')}</PageTitle>
 
       {errors.length > 0 && (
-        <div ref={errorRef} tabIndex={-1} role="alert" className="mt-4 rounded-lg border-2 border-issue p-4">
-          <p className="font-bold">{t('report.errorSummary')}</p>
-          <ul className="mt-1 list-disc pl-6">{errors.map((e) => <li key={e}>{e}</li>)}</ul>
+        <div ref={errorRef} tabIndex={-1} role="alert" className="card mb-6 flex gap-3 p-4 ring-[length:var(--hair)] ring-issue">
+          <CircleAlert aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-issue" />
+          <div>
+            <p className="font-semibold">{t('report.errorSummary')}</p>
+            <ul className="mt-1 list-disc pl-5">{errors.map((e) => <li key={e}>{e}</li>)}</ul>
+          </div>
         </div>
       )}
 
-      <form onSubmit={onSubmit} noValidate className="mt-6 flex flex-col gap-6">
-        <div className="flex flex-col gap-3">
+      <form onSubmit={onSubmit} noValidate className="flex flex-col gap-8">
+        <div className="card flex flex-col gap-3 p-4">
           <LocationInput label={t('report.location')} value={location} onChange={setLocation}
             onPickOnMap={settings.ui.showMap ? () => setPicking((p) => !p) : undefined} pickActive={picking} />
           {settings.ui.showMap && picking && (
-            <div className="h-80 overflow-hidden rounded-lg border-2 border-line">
+            <div className="h-80 overflow-hidden rounded-[14px]">
               <MapView center={config.data?.region.center ?? SKOPJE_CENTER} zoom={16} routes={[]} selectedId={null}
                 origin={location} destination={null} pickLabel={t('report.location')} onPick={onPick}
                 onCancelPick={() => setPicking(false)} />
@@ -135,36 +143,32 @@ export function ReportPage() {
         <RadioGroup legend={t('report.impact')} name="impact" value={impact} onChange={setImpact}
           options={IMPACTS.map((c) => ({ value: c, label: t(`report.impacts.${c}`) }))} />
 
-        <div>
+        <Group>
           <Checkbox label={t('report.temporary')} checked={temporary} onChange={setTemporary} />
           {temporary && (
             <Select label={t('report.duration')} value={days} onChange={setDays}
               options={[1, 3, 7, 14, 30, 60, 90].map((d) => ({ value: String(d), label: t('report.days', { count: d }) }))} />
           )}
-        </div>
+        </Group>
 
-        <div className="flex flex-col gap-1">
-          <label htmlFor="desc" className="font-display text-lg font-semibold">
-            {t('report.description')} <span className="font-sans text-sm font-normal text-ink-soft">({t('common.optional')})</span>
-          </label>
-          <p id="desc-hint" className="text-sm text-ink-soft">{t('report.descriptionHint')}</p>
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="desc" className={fieldLabel}>{t('report.description')} {optional}</label>
+          <Footnote id="desc-hint">{t('report.descriptionHint')}</Footnote>
           <textarea id="desc" rows={4} maxLength={1000} value={description} onChange={(e) => setDescription(e.target.value)}
             aria-describedby="desc-hint desc-count"
-            className="rounded-lg border-2 border-line bg-surface p-3 text-ink" />
-          <p id="desc-count" className="text-sm text-ink-soft">{t('report.chars', { count: description.length })}</p>
+            className="field p-3.5" />
+          <Footnote id="desc-count" className="text-right">{t('report.chars', { count: description.length })}</Footnote>
         </div>
 
-        <div className="flex flex-col gap-1">
-          <label htmlFor="photo" className="font-display text-lg font-semibold">
-            {t('report.photo')} <span className="font-sans text-sm font-normal text-ink-soft">({t('common.optional')})</span>
-          </label>
-          <p id="photo-hint" className="text-sm text-ink-soft">{t('report.photoHint')}</p>
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="photo" className={fieldLabel}>{t('report.photo')} {optional}</label>
+          <Footnote id="photo-hint">{t('report.photoHint')}</Footnote>
           <input id="photo" type="file" accept="image/jpeg,image/png" aria-describedby="photo-hint"
             onChange={(e) => setPhoto(e.target.files?.[0] ?? null)}
-            className="min-h-11 file:mr-3 file:min-h-11 file:rounded-lg file:border-2 file:border-line file:bg-surface file:px-4 file:text-ink" />
+            className="min-h-11 max-w-full text-[0.9375rem] text-muted file:mr-3 file:min-h-11 file:cursor-pointer file:rounded-pill file:border-0 file:bg-tint file:px-5 file:font-medium file:text-link hover:file:bg-fill" />
           {preview && (
-            <div className="mt-2 flex items-start gap-3">
-              <img src={preview} alt={t('report.photoPreview')} className="max-h-40 rounded-lg border-2 border-line" />
+            <div className="mt-2 flex flex-wrap items-start gap-3">
+              <img src={preview} alt={t('report.photoPreview')} className="max-h-40 rounded-[14px]" />
               <Button variant="quiet" onClick={() => setPhoto(null)}>{t('report.photoRemove')}</Button>
             </div>
           )}
@@ -176,9 +180,9 @@ export function ReportPage() {
           <input id="website" tabIndex={-1} autoComplete="off" value={website} onChange={(e) => setWebsite(e.target.value)} />
         </div>
 
-        <p className="text-sm text-ink-soft">{t('report.privacy')}</p>
+        <Footnote>{t('report.privacy')}</Footnote>
         {apiError && <ErrorBox>{t(`errors.${apiError}`, { defaultValue: t('errors.default') })}</ErrorBox>}
-        <Button type="submit" variant="primary" className="min-h-14 text-lg" disabled={submit.isPending}>
+        <Button type="submit" variant="primary" size="lg" className="w-full" disabled={submit.isPending}>
           {submit.isPending ? t('report.submitting') : t('report.submit')}
         </Button>
       </form>

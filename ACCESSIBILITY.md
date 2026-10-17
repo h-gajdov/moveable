@@ -25,7 +25,7 @@ implemented, how it is tested, and what is still open.
 | Screen readers | Semantic landmarks, one `h1` per page, logical heading levels, labelled controls, `fieldset/legend` for groups, ARIA 1.2 combobox, polite/assertive live regions, focus moved to new content (route results, page changes, error summaries), steps as an ordered list with "Step n of N". |
 | Keyboard / switch | Everything is reachable by Tab. Skip link. Visible two-tone focus ring (yellow + dark). No drag-only interactions. Map picking works with arrows + Enter, and Escape cancels. |
 | Motor | Primary targets ≥ 44×44 CSS px, radios and checkboxes sized 24 px with full-row labels, no time limits, no gestures required. |
-| Low vision | Text size 100–200 % (rem-based reflow), browser zoom, light/dark/high-contrast themes, `forced-colors` support, AA contrast in all themes (checked by axe), Fira Sans with full Cyrillic. |
+| Low vision | Text size 100–200 % (rem-based reflow), browser zoom, light/dark/high-contrast themes, `forced-colors` support, AA contrast in all themes (checked by axe), SF Pro on Apple devices and self-hosted Inter elsewhere, both with full Cyrillic. |
 | Colour vision | Routes use the Okabe–Ito palette **and** solid/dashed/dotted lines plus text ("Route 2, dashed line"). Statuses use shapes (✓ ! ?) and words. |
 | Deaf / hard of hearing | No audio-only information. Speech is optional and always mirrored as text. Vibration patterns are optional. |
 | Cognitive | Plain language, consistent layout, "short and simple" instruction mode that keeps safety notes, step-by-step navigation with Repeat/Next/Previous, error messages that say what to do. |

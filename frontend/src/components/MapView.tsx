@@ -1,20 +1,21 @@
 import type { FeatureCollection } from 'geojson';
 import maplibregl, { type GeoJSONSource, type Map as MLMap } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { useEffect, useRef, useState } from 'react';
+import { Layers } from 'lucide-react';
+import { useEffect, useRef, useState, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../api/client';
 import type { ChosenLocation, LngLat, RouteOption } from '../api/types';
 import { bboxOf } from '../lib/geo';
 import { prefersReducedMotion, useSettings } from '../settings/SettingsContext';
-import { Checkbox } from './ui';
+import { Button, Checkbox } from './ui';
 
 const STYLE_URL = (import.meta.env.VITE_MAP_STYLE_URL as string | undefined) ?? 'https://tiles.openfreemap.org/styles/liberty';
 const EMPTY: FeatureCollection = { type: 'FeatureCollection', features: [] };
 const DASHES: (number[] | undefined)[] = [undefined, [2.5, 1.5], [0.5, 1.5]];
 
 function cssVar(name: string) {
-  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#0072b2';
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#0071e3';
 }
 
 export interface MapFocus {
@@ -22,12 +23,23 @@ export interface MapFocus {
   nonce: number;
 }
 
+/** Map padding that keeps fitted routes clear of a panel floating over the map. */
+function fitPadding(map: MLMap, obstruct?: RefObject<HTMLElement | null>) {
+  const pad = { top: 60, right: 60, bottom: 60, left: 60 };
+  const el = obstruct?.current;
+  if (el && getComputedStyle(el).position === 'absolute') {
+    const covered = el.getBoundingClientRect().right - map.getContainer().getBoundingClientRect().left;
+    if (covered > 0 && covered < map.getContainer().clientWidth - 200) pad.left += covered;
+  }
+  return pad;
+}
+
 /**
  * Visual map. Every piece of information shown here is also available as text
  * elsewhere; the map is never required. Keyboard: arrows pan, +/- zoom, and in
  * pick mode Enter chooses the centre point.
  */
-export function MapView({ center, zoom, routes, selectedId, origin, destination, pickLabel, onPick, onCancelPick, focus, position }: {
+export function MapView({ center, zoom, routes, selectedId, origin, destination, pickLabel, onPick, onCancelPick, focus, position, obstruct }: {
   center: LngLat;
   zoom: number;
   routes: RouteOption[];
@@ -39,6 +51,8 @@ export function MapView({ center, zoom, routes, selectedId, origin, destination,
   onCancelPick?: () => void;
   focus?: MapFocus | null;
   position?: { lngLat: LngLat; accuracyM: number } | null;
+  /** Element floating over the map (e.g. the side panel) that fitted routes should avoid. */
+  obstruct?: RefObject<HTMLElement | null>;
 }) {
   const { t } = useTranslation();
   const { settings } = useSettings();
@@ -86,7 +100,7 @@ export function MapView({ center, zoom, routes, selectedId, origin, destination,
       const add = (id: string) => map.addSource(id, { type: 'geojson', data: EMPTY });
       ['routes', 'obstacles', 'features', 'coverage', 'position'].forEach(add);
       map.addLayer({ id: 'coverage', type: 'fill', source: 'coverage', paint: {
-        'fill-color': '#5b5f97', 'fill-opacity': ['interpolate', ['linear'], ['get', 'completeness'], 0, 0.05, 0.6, 0.45],
+        'fill-color': '#3634a3', 'fill-opacity': ['interpolate', ['linear'], ['get', 'completeness'], 0, 0.05, 0.6, 0.45],
       } });
       map.addLayer({ id: 'route-casing', type: 'line', source: 'routes', filter: ['==', ['get', 'selected'], true],
         layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': 11 } });
@@ -94,25 +108,25 @@ export function MapView({ center, zoom, routes, selectedId, origin, destination,
         map.addLayer({ id: `route-${i}`, type: 'line', source: 'routes', filter: ['==', ['get', 'index'], i],
           layout: { 'line-cap': i === 0 ? 'round' : 'butt', 'line-join': 'round' },
           paint: {
-            'line-color': '#0072b2',
+            'line-color': '#0071e3',
             'line-width': ['case', ['get', 'selected'], 7, 4],
             ...(DASHES[i] ? { 'line-dasharray': DASHES[i] } : {}),
           } });
       }
       map.addLayer({ id: 'features', type: 'circle', source: 'features', paint: {
         'circle-radius': 6, 'circle-stroke-width': 2, 'circle-stroke-color': '#ffffff',
-        'circle-color': ['match', ['get', 'kind'], 'STAIRS', '#b4410e', 'CROSSING', '#0b4f6c', 'BARRIER', '#5b5f97', 'KERB', '#5b5f97', '#1f7a4d'],
+        'circle-color': ['match', ['get', 'kind'], 'STAIRS', '#c4000f', 'CROSSING', '#0071e3', 'BARRIER', '#3634a3', 'KERB', '#3634a3', '#1e7b34'],
       } });
       map.addLayer({ id: 'obstacles', type: 'circle', source: 'obstacles', paint: {
         'circle-radius': 9, 'circle-stroke-width': 3,
-        'circle-color': ['case', ['get', 'verified'], '#b4410e', '#ffffff'],
-        'circle-stroke-color': ['case', ['get', 'verified'], '#ffffff', '#b4410e'],
+        'circle-color': ['case', ['get', 'verified'], '#c4000f', '#ffffff'],
+        'circle-stroke-color': ['case', ['get', 'verified'], '#ffffff', '#c4000f'],
       } });
       map.addLayer({ id: 'position-accuracy', type: 'circle', source: 'position', paint: {
-        'circle-radius': ['get', 'radiusPx'], 'circle-color': '#0072b2', 'circle-opacity': 0.15,
+        'circle-radius': ['get', 'radiusPx'], 'circle-color': '#0071e3', 'circle-opacity': 0.15,
       } });
       map.addLayer({ id: 'position', type: 'circle', source: 'position', paint: {
-        'circle-radius': 8, 'circle-color': '#0072b2', 'circle-stroke-width': 3, 'circle-stroke-color': '#ffffff',
+        'circle-radius': 8, 'circle-color': '#0071e3', 'circle-stroke-width': 3, 'circle-stroke-color': '#ffffff',
       } });
       setReady(true);
     });
@@ -161,13 +175,13 @@ export function MapView({ center, zoom, routes, selectedId, origin, destination,
       })),
     });
     for (let i = 0; i < 3; i++) map.setPaintProperty(`route-${i}`, 'line-color', cssVar(`--c-route-${i + 1}`));
-    map.setPaintProperty('route-casing', 'line-color', cssVar('--c-surface'));
+    map.setPaintProperty('route-casing', 'line-color', cssVar('--c-card'));
     // Draw the selected route on top.
     const sel = routes.findIndex((r) => r.id === selectedId);
     if (sel >= 0) map.moveLayer(`route-${sel}`);
     if (routes.length > 0) {
       const b = bboxOf(routes.flatMap((r) => r.geometry.coordinates));
-      map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 60, duration: reduced ? 0 : 600, maxZoom: 17 });
+      map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: fitPadding(map, obstruct), duration: reduced ? 0 : 600, maxZoom: 17 });
     }
   }, [routes, selectedId, ready, settings.ui.theme, reduced]);
 
@@ -182,9 +196,9 @@ export function MapView({ center, zoom, routes, selectedId, origin, destination,
       const el = document.createElement('div');
       el.setAttribute('aria-hidden', 'true');
       el.title = `${title}: ${loc.label}`;
-      el.style.cssText = 'width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font:700 16px var(--font-display);'
-        + `background:${letter === 'A' ? 'var(--c-surface)' : 'var(--c-ink)'};color:${letter === 'A' ? 'var(--c-ink)' : 'var(--c-surface)'};`
-        + 'border:4px solid var(--c-ink);box-shadow:0 0 0 2px var(--c-surface)';
+      el.style.cssText = 'width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font:600 15px var(--font-display);'
+        + `background:${letter === 'A' ? 'var(--c-card)' : 'var(--c-ink)'};color:${letter === 'A' ? 'var(--c-ink)' : 'var(--c-card)'};`
+        + 'border:3px solid var(--c-ink);box-shadow:0 0 0 2px var(--c-card),0 4px 12px rgb(0 0 0/.25)';
       el.textContent = letter;
       markers.current.push(new maplibregl.Marker({ element: el }).setLngLat([loc.lon, loc.lat]).addTo(map));
     });
@@ -249,7 +263,7 @@ export function MapView({ center, zoom, routes, selectedId, origin, destination,
   }, [layers, ready]);
 
   if (failed) {
-    return <p role="status" className="m-4 rounded-lg bg-surface-2 p-4">{t('common.mapUnavailable')}</p>;
+    return <p role="status" className="m-4 rounded-[14px] bg-fill p-4">{t('common.mapUnavailable')}</p>;
   }
 
   return (
@@ -258,32 +272,36 @@ export function MapView({ center, zoom, routes, selectedId, origin, destination,
       {pickLabel && (
         <>
           <div aria-hidden="true" className="pointer-events-none absolute left-1/2 top-1/2 size-10 -translate-x-1/2 -translate-y-1/2">
-            <div className="absolute left-1/2 top-0 h-full w-1 -translate-x-1/2 bg-ink" />
-            <div className="absolute left-0 top-1/2 h-1 w-full -translate-y-1/2 bg-ink" />
+            <div className="absolute left-1/2 top-0 h-full w-1 -translate-x-1/2 rounded-full bg-ink shadow-[0_0_0_2px_var(--c-card)]" />
+            <div className="absolute left-0 top-1/2 h-1 w-full -translate-y-1/2 rounded-full bg-ink shadow-[0_0_0_2px_var(--c-card)]" />
           </div>
-          <div className="absolute inset-x-2 top-2 rounded-lg border-2 border-ink bg-tactile p-3 text-tactile-ink shadow">
+          <div className="glass absolute left-1/2 top-3 w-[min(26rem,calc(100%-1.5rem))] -translate-x-1/2 rounded-card p-4">
             <p className="font-medium">{t('plan.mapPickActive', { field: pickLabel })}</p>
-            <div className="mt-2 flex gap-2">
-              <button type="button" className="min-h-11 rounded-md border-2 border-current px-3 font-medium"
-                onClick={() => { const c = mapRef.current?.getCenter(); if (c) onPick?.([c.lng, c.lat]); }}>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button variant="primary" onClick={() => { const c = mapRef.current?.getCenter(); if (c) onPick?.([c.lng, c.lat]); }}>
                 {t('map.pickHere')}
-              </button>
-              <button type="button" className="min-h-11 rounded-md px-3 font-medium underline" onClick={onCancelPick}>
-                {t('plan.mapPickCancel')}
-              </button>
+              </Button>
+              <Button variant="secondary" onClick={onCancelPick}>{t('plan.mapPickCancel')}</Button>
             </div>
           </div>
         </>
       )}
-      <details className="absolute bottom-8 left-2 max-w-[18rem] rounded-lg border-2 border-line bg-surface p-2 text-sm shadow">
-        <summary className="min-h-11 cursor-pointer content-center px-1 font-medium">{t('map.layers')}</summary>
-        <Checkbox label={t('map.obstacles')} checked={layers.obstacles} onChange={(v) => setLayers((l) => ({ ...l, obstacles: v }))} />
-        <Checkbox label={t('map.features')} checked={layers.features} onChange={(v) => setLayers((l) => ({ ...l, features: v }))}
-          hint={zoomTooLow ? t('map.zoomIn') : undefined} />
-        <Checkbox label={t('map.coverage')} checked={layers.coverage} onChange={(v) => setLayers((l) => ({ ...l, coverage: v }))}
-          hint={layers.coverage ? t('map.coverageScale') : undefined} />
-        <p className="mt-1 flex items-center gap-2"><span aria-hidden="true" className="inline-block size-4 rounded-full border-[3px] border-white bg-issue" />{t('map.legendVerified')}</p>
-        <p className="flex items-center gap-2"><span aria-hidden="true" className="inline-block size-4 rounded-full border-[3px] border-issue bg-white" />{t('map.legendPending')}</p>
+      <details className="glass group absolute right-2.5 top-[118px] max-w-[min(18rem,calc(100%-1.25rem))] rounded-[14px] text-[0.9375rem]">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-[14px] px-3 font-medium [&::-webkit-details-marker]:hidden">
+          <Layers aria-hidden="true" className="size-5" />
+          {t('map.layers')}
+        </summary>
+        <div className="rows px-3 pb-2">
+          <Checkbox label={t('map.obstacles')} checked={layers.obstacles} onChange={(v) => setLayers((l) => ({ ...l, obstacles: v }))} />
+          <Checkbox label={t('map.features')} checked={layers.features} onChange={(v) => setLayers((l) => ({ ...l, features: v }))}
+            hint={zoomTooLow ? t('map.zoomIn') : undefined} />
+          <Checkbox label={t('map.coverage')} checked={layers.coverage} onChange={(v) => setLayers((l) => ({ ...l, coverage: v }))}
+            hint={layers.coverage ? t('map.coverageScale') : undefined} />
+          <div className="flex flex-col gap-1 py-2.5 text-[0.875rem]">
+            <p className="flex items-center gap-2"><span aria-hidden="true" className="inline-block size-4 rounded-full border-[3px] border-white bg-issue" />{t('map.legendVerified')}</p>
+            <p className="flex items-center gap-2"><span aria-hidden="true" className="inline-block size-4 rounded-full border-[3px] border-issue bg-white" />{t('map.legendPending')}</p>
+          </div>
+        </div>
       </details>
     </div>
   );

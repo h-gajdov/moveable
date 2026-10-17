@@ -1,6 +1,6 @@
 import type { TFunction } from 'i18next';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { ArrowUpDown, Map as MapIcon } from 'lucide-react';
+import { ArrowUpDown, ChevronRight, Map as MapIcon } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../api/client';
@@ -11,7 +11,7 @@ import { LocationInput } from '../components/LocationInput';
 import { MapView, type MapFocus } from '../components/MapView';
 import { PreferencesEditor, ProfilePicker } from '../components/NeedsEditor';
 import { RouteResults } from '../components/RouteResults';
-import { Button, ErrorBox } from '../components/ui';
+import { Button, ErrorBox, Notice } from '../components/ui';
 import { currentLanguage } from '../i18n';
 import { pickName } from '../lib/format';
 import { useSettings } from '../settings/SettingsContext';
@@ -51,6 +51,7 @@ export function PlanPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const needsRef = useRef<HTMLDetailsElement>(null);
   const mapSectionRef = useRef<HTMLElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   const profile = profiles.data?.profiles.find((p) => p.code === settings.routing.profile);
   const route = useMutation({
@@ -91,59 +92,71 @@ export function PlanPage() {
   const errorCode = route.error instanceof ApiError ? route.error.code : route.error ? 'default' : null;
 
   return (
-    <Layout title={t('plan.title')} wide>
-      <div className={`grid ${showMap ? 'lg:grid-cols-[minmax(24rem,30rem)_1fr]' : ''}`}>
-        <div className="flex flex-col gap-6 px-4 py-6">
-          <h1 className="text-3xl font-bold">{t('plan.title')}</h1>
-          <form onSubmit={submit} noValidate className="flex flex-col gap-5" aria-describedby={formError ? 'plan-error' : undefined}>
-            <LocationInput
-              label={t('plan.from')}
-              value={trip.origin}
-              onChange={trip.setOrigin}
-              onPickOnMap={showMap ? () => setPickField(pickField === 'origin' ? null : 'origin') : undefined}
-              pickActive={pickField === 'origin'}
-            />
-            <div>
-              <Button
-                variant="quiet"
-                onClick={() => {
-                  const o = trip.origin;
-                  trip.setOrigin(trip.destination);
-                  trip.setDestination(o);
-                }}
-                icon={<ArrowUpDown aria-hidden="true" className="size-5" />}
-              >
-                {t('plan.swap')}
-              </Button>
+    <Layout title={t('plan.title')} wide={showMap}>
+      <div className={showMap ? 'lg:absolute lg:inset-0' : ''}>
+        <div
+          ref={panelRef}
+          className={showMap
+            ? 'panel-scroll flex flex-col gap-6 px-4 py-6 sm:px-6 lg:absolute lg:bottom-4 lg:left-4 lg:top-4 lg:z-10 lg:w-[30rem] lg:overflow-y-auto lg:rounded-panel lg:glass lg:px-6'
+            : 'flex flex-col gap-6'}
+        >
+          <h1 className="text-[2rem] sm:text-[2.25rem]">{t('plan.title')}</h1>
+          <form onSubmit={submit} noValidate className="flex flex-col gap-6" aria-describedby={formError ? 'plan-error' : undefined}>
+            <div className="card flex flex-col gap-3 p-4">
+              <LocationInput
+                label={t('plan.from')}
+                value={trip.origin}
+                onChange={trip.setOrigin}
+                onPickOnMap={showMap ? () => setPickField(pickField === 'origin' ? null : 'origin') : undefined}
+                pickActive={pickField === 'origin'}
+              />
+              <div className="flex items-center gap-3">
+                <div aria-hidden="true" className="h-px flex-1 bg-hairline" />
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    const o = trip.origin;
+                    trip.setOrigin(trip.destination);
+                    trip.setDestination(o);
+                  }}
+                  icon={<ArrowUpDown aria-hidden="true" className="size-4.5" />}
+                >
+                  {t('plan.swap')}
+                </Button>
+                <div aria-hidden="true" className="h-px flex-1 bg-hairline" />
+              </div>
+              <LocationInput
+                label={t('plan.to')}
+                value={trip.destination}
+                onChange={trip.setDestination}
+                onPickOnMap={showMap ? () => setPickField(pickField === 'destination' ? null : 'destination') : undefined}
+                pickActive={pickField === 'destination'}
+                allowGps={false}
+              />
             </div>
-            <LocationInput
-              label={t('plan.to')}
-              value={trip.destination}
-              onChange={trip.setDestination}
-              onPickOnMap={showMap ? () => setPickField(pickField === 'destination' ? null : 'destination') : undefined}
-              pickActive={pickField === 'destination'}
-              allowGps={false}
-            />
 
-            <section aria-labelledby="needs-h" className="flex flex-col gap-3 border-t-2 border-line pt-4">
-              <h2 id="needs-h" className="text-2xl font-bold">{t('plan.needsTitle')}</h2>
+            <section aria-labelledby="needs-h" className="flex flex-col gap-3">
+              <h2 id="needs-h" className="px-1 text-[1.375rem]">{t('plan.needsTitle')}</h2>
               <ProfilePicker value={settings.routing.profile} onChange={(p) => updateRouting({ profile: p, overrides: {} })} />
-              <details ref={needsRef} className="rounded-lg border-2 border-line bg-surface">
-                <summary className="min-h-11 cursor-pointer content-center px-4 font-medium">{t('plan.adjust')}</summary>
-                <div className="px-4 pb-4">
+              <details ref={needsRef} className="group card">
+                <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 rounded-card px-4 font-medium text-link [&::-webkit-details-marker]:hidden">
+                  {t('plan.adjust')}
+                  <ChevronRight aria-hidden="true" className="size-5 shrink-0 text-muted transition-transform group-open:rotate-90" />
+                </summary>
+                <div className="border-t border-hairline bg-canvas p-3 pb-4 sm:p-4">
                   <PreferencesEditor profile={profile} overrides={settings.routing.overrides}
                     onChange={(o) => updateRouting({ overrides: o })} />
                 </div>
               </details>
             </section>
 
-            {formError && <p id="plan-error" className="font-medium text-issue">{formError}</p>}
-            <Button type="submit" variant="primary" className="min-h-14 text-lg" disabled={route.isPending}>
+            {formError && <p id="plan-error" className="px-1 font-medium text-issue">{formError}</p>}
+            <Button type="submit" variant="primary" size="lg" className="w-full" disabled={route.isPending}>
               {route.isPending ? t('plan.finding') : t('plan.findRoute')}
             </Button>
           </form>
 
-          {route.isPending && <p role="status">{t('plan.finding')}</p>}
+          {route.isPending && <p role="status" className="px-1 text-muted">{t('plan.finding')}</p>}
           {errorCode && !route.isPending && (
             <ErrorBox onRetry={() => submit()} retryLabel={t('common.retry')}>
               {t(`errors.${errorCode}`, { defaultValue: t('errors.default') })}
@@ -166,10 +179,23 @@ export function PlanPage() {
               }}
             />
           )}
+          {!showMap && (
+            <Notice className="flex-wrap items-center justify-between">
+              <p>{t('common.mapHidden')}</p>
+              <Button className="mt-2" variant="tinted" icon={<MapIcon aria-hidden="true" className="size-4.5" />}
+                onClick={() => updateUi({ showMap: true })}>
+                {t('common.showMap')}
+              </Button>
+            </Notice>
+          )}
         </div>
 
-        {showMap ? (
-          <section ref={mapSectionRef} aria-label={t('common.mapRegion')} className="relative h-[55vh] lg:sticky lg:top-0 lg:h-dvh">
+        {showMap && (
+          <section
+            ref={mapSectionRef}
+            aria-label={t('common.mapRegion')}
+            className="relative mx-4 mb-6 h-[60vh] overflow-hidden rounded-panel card sm:mx-6 lg:absolute lg:inset-0 lg:m-0 lg:h-auto lg:rounded-none"
+          >
             <MapView
               center={center}
               zoom={config.data?.region.zoom ?? 14}
@@ -181,19 +207,17 @@ export function PlanPage() {
               onPick={onPick}
               onCancelPick={() => setPickField(null)}
               focus={focus}
+              obstruct={panelRef}
             />
-            <div className="absolute right-14 top-2">
-              <Button variant="secondary" className="shadow" icon={<MapIcon aria-hidden="true" className="size-5" />}
-                onClick={() => updateUi({ showMap: false })}>
-                {t('common.hideMap')}
-              </Button>
-            </div>
+            {!pickField && (
+              <div className="absolute right-16 top-2.5">
+                <Button variant="secondary" className="glass bg-[var(--c-glass)]!" icon={<MapIcon aria-hidden="true" className="size-4.5" />}
+                  onClick={() => updateUi({ showMap: false })}>
+                  {t('common.hideMap')}
+                </Button>
+              </div>
+            )}
           </section>
-        ) : (
-          <div className="px-4 pb-6">
-            <p className="text-ink-soft">{t('common.mapHidden')}</p>
-            <Button className="mt-2" onClick={() => updateUi({ showMap: true })}>{t('common.showMap')}</Button>
-          </div>
         )}
       </div>
     </Layout>
