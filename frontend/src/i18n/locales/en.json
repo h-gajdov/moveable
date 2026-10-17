@@ -428,6 +428,9 @@
     "vibrationHint": "Only on devices that support vibration.",
     "testVibration": "Test vibration",
     "noVibration": "This device does not support vibration.",
+    "voicePrompts": "Spoken hints in the planner",
+    "voicePromptsHint": "A computer voice tells you what to choose next. This is a demo: only a few steps have hints so far.",
+    "testVoicePrompt": "Play a hint",
     "routing": "Default route needs",
     "routingHint": "Used when you open the planner. You can change them for each trip.",
     "privacy": "Privacy",
@@ -537,5 +540,11 @@
     "useOrigin": "Use as start",
     "useDestination": "Use as destination",
     "showOnMap": "Show on map"
+  },
+  "voiceCues": {
+    "chooseStart": "Choose where you are starting from.",
+    "chooseDestination": "Now choose your destination.",
+    "pickOnMap": "Tap the map where you want the point.",
+    "chooseRoute": "Routes found. Choose the one that suits you."
   }
 }

@@ -7,6 +7,7 @@ import { ProfilePicker } from '../components/NeedsEditor';
 import { Button, Checkbox, Footnote, Group, GroupHeading, PageTitle, RadioGroup, Select } from '../components/ui';
 import { currentLanguage } from '../i18n';
 import { hasVoiceFor, speak, speechSupported, vibrate, vibrationSupported, VIBRATION } from '../lib/speech';
+import { playCue } from '../lib/voiceCues';
 import { useSettings, type InterfaceSettings } from '../settings/SettingsContext';
 
 export function SettingsPage() {
@@ -63,6 +64,13 @@ export function SettingsPage() {
                 setVoiceNote(hasVoiceFor(lang) ? null : t('settings.noVoice'));
               }}>{t('settings.testSpeech')}</Button>
               {voiceNote && <p role="status" className="pb-1 text-[0.875rem] text-muted">{voiceNote}</p>}
+            </div>
+          )}
+          <Checkbox label={t('settings.voicePrompts')} hint={t('settings.voicePromptsHint')}
+            checked={ui.voicePrompts} onChange={(v) => updateUi({ voicePrompts: v })} />
+          {ui.voicePrompts && (
+            <div className="py-2">
+              <Button variant="quiet" className="-ml-4" onClick={() => playCue('chooseStart', lang)}>{t('settings.testVoicePrompt')}</Button>
             </div>
           )}
           <Checkbox label={t('settings.vibration')} hint={vibrationSupported() ? t('settings.vibrationHint') : t('settings.noVibration')}

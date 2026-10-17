@@ -17,6 +17,8 @@ export interface InterfaceSettings {
   instructionDetail: 'detailed' | 'simple';
   speech: boolean;
   speechRate: number;
+  /** Recorded hints in the planner saying what to choose next (demo). */
+  voicePrompts: boolean;
   vibration: boolean;
 }
 
@@ -42,6 +44,7 @@ export const DEFAULT_SETTINGS: Settings = {
     instructionDetail: 'detailed',
     speech: false,
     speechRate: 1,
+    voicePrompts: false,
     vibration: false,
   },
   routing: { profile: 'STANDARD', overrides: {} },

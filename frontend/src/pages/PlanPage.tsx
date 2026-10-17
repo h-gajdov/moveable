@@ -16,6 +16,7 @@ import { RouteResults } from '../components/RouteResults';
 import { Button, ErrorBox, Notice } from '../components/ui';
 import { currentLanguage } from '../i18n';
 import { pickName } from '../lib/format';
+import { useVoiceCue, type VoiceCue } from '../lib/voiceCues';
 import { prefersReducedMotion, useSettings } from '../settings/SettingsContext';
 import { useTrip } from '../settings/TripContext';
 
@@ -161,6 +162,15 @@ export function PlanPage() {
   // Once there is a route, the form folds into a short trip summary so the
   // map and the route choices fit on screen together.
   const showForm = editing || !trip.response || trip.response.routes.length === 0;
+
+  // Spoken hint for the next thing to choose (demo: only these steps have one).
+  const cue: VoiceCue | null = pickField ? 'pickOnMap'
+    : route.isPending ? null
+    : showForm && !trip.origin ? 'chooseStart'
+    : showForm && !trip.destination ? 'chooseDestination'
+    : !showForm ? 'chooseRoute'
+    : null;
+  useVoiceCue(cue, currentLanguage(), settings.ui.voicePrompts);
 
   const content = (
     <>

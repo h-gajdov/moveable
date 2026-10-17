@@ -25,6 +25,18 @@ describe('translations', () => {
   });
 });
 
+describe('voice cues', () => {
+  it('every cue string has a generated clip in each language', () => {
+    // Missing clips: run scripts/generate-voice-cues.py after adding or changing a cue.
+    const clips = Object.keys(import.meta.glob('/public/audio/cues/*/*.mp3', { query: '?url' }));
+    for (const [lang, locale] of Object.entries({ en, mk, sq })) {
+      for (const cue of Object.keys(locale.voiceCues)) {
+        expect(clips).toContain(`/public/audio/cues/${lang}/${cue}.mp3`);
+      }
+    }
+  });
+});
+
 describe('names', () => {
   const names = { default: 'Македонија', latn: 'Makedonija', sq: 'Maqedonia' };
   it('picks the language-appropriate name with transliteration fallback', () => {

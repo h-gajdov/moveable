@@ -428,6 +428,9 @@
     "vibrationHint": "Vetëm në pajisjet që mbështesin dridhjet.",
     "testVibration": "Provo dridhjen",
     "noVibration": "Kjo pajisje nuk mbështet dridhje.",
+    "voicePrompts": "Udhëzime me zë në planifikues",
+    "voicePromptsHint": "Një zë kompjuterik ju tregon çfarë të zgjidhni më pas. Kjo është një demo: deri tani vetëm disa hapa kanë udhëzime.",
+    "testVoicePrompt": "Luaj një udhëzim",
     "routing": "Nevojat bazë për rrugën",
     "routingHint": "Përdoren kur hapni planifikuesin. Mund t'i ndryshoni për çdo udhëtim.",
     "privacy": "Privatësia",
@@ -537,5 +540,11 @@
     "useOrigin": "Përdor si nisje",
     "useDestination": "Përdor si destinacion",
     "showOnMap": "Shfaq në hartë"
+  },
+  "voiceCues": {
+    "chooseStart": "Zgjidhni nga po nisheni.",
+    "chooseDestination": "Tani zgjidhni destinacionin.",
+    "pickOnMap": "Prekni hartën aty ku doni pikën.",
+    "chooseRoute": "U gjetën rrugë. Zgjidhni atë që ju përshtatet."
   }
 }
