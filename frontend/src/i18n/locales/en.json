@@ -11,10 +11,16 @@
     "help": "Help and privacy",
     "admin": "Moderation",
     "skip": "Skip to main content",
-    "language": "Language"
+    "language": "Language",
+    "tabPlan": "Route",
+    "tabReport": "Report",
+    "tabSettings": "Settings",
+    "tabHelp": "Help"
   },
   "lang": { "mk": "Македонски", "sq": "Shqip", "en": "English" },
   "common": {
+    "sheetShow": "Show details",
+    "sheetHide": "Hide details, show the full map",
     "close": "Close",
     "cancel": "Cancel",
     "retry": "Try again",
@@ -55,6 +61,8 @@
     "profileLegend": "Plan the route for",
     "adjust": "Adjust needs",
     "findRoute": "Find route",
+    "editTrip": "Change",
+    "editTripLabel": "Change start, destination or needs",
     "finding": "Finding routes…",
     "missingPoints": "Choose a start and a destination first.",
     "mapPickActive": "Choosing the {{field}} on the map. Tap or click the map, or move it with the arrow keys and press Enter to use the centre point. Press Escape to cancel.",

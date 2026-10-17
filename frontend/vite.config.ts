@@ -16,7 +16,7 @@ export default defineConfig({
         short_name: 'Accessible Skopje',
         description: 'Pedestrian routes that fit your accessibility needs in Skopje.',
         lang: 'mk',
-        theme_color: '#161617',
+        theme_color: '#F5F5F7',
         background_color: '#F5F5F7',
         display: 'standalone',
         start_url: '/',

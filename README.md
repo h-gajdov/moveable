@@ -94,6 +94,6 @@ Automated checks do not replace testing with disabled people. See
 ## Licences
 
 Code: AGPL-3.0-or-later (see `LICENSE`). Map data: © OpenStreetMap contributors,
-ODbL 1.0. Attribution is shown in the app footer and on the map. The derived
+ODbL 1.0. Attribution is shown on the map and on the Help screen. The derived
 database is ODbL. Estimated slopes come from Copernicus DEM GLO-30. Full details
 are in [DATA_SOURCES.md](DATA_SOURCES.md).

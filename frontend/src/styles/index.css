@@ -41,6 +41,12 @@
   --c-bar-ink: #e8e8ed;
   --c-bar-muted: #a1a1a6;
   --c-glass: rgb(255 255 255 / 0.82);
+  --c-chrome: rgb(245 245 247 / 0.86);
+  --c-desk: #e8e8ed;
+  --c-desk-glow: #ffffff;
+  --c-bezel: #1d1d1f;
+  --c-bezel-rim: #86868b;
+  --bezel: 12px;
   --c-focus: #0071e3;
   --c-switch-on: #1e7b34;
   --hair: 1px;
@@ -77,6 +83,11 @@
     --c-bar-ink: #f5f5f7;
     --c-bar-muted: #a1a1a6;
     --c-glass: rgb(28 28 30 / 0.84);
+  --c-chrome: rgb(22 22 23 / 0.86);
+  --c-desk: #000000;
+  --c-desk-glow: #1d1d1f;
+  --c-bezel: #2c2c2e;
+  --c-bezel-rim: #545458;
     --c-focus: #2997ff;
     --c-switch-on: #248a3d;
     --shadow-card: none;
@@ -111,6 +122,11 @@
   --c-bar-ink: #f5f5f7;
   --c-bar-muted: #a1a1a6;
   --c-glass: rgb(28 28 30 / 0.84);
+  --c-chrome: rgb(22 22 23 / 0.86);
+  --c-desk: #000000;
+  --c-desk-glow: #1d1d1f;
+  --c-bezel: #2c2c2e;
+  --c-bezel-rim: #545458;
   --c-focus: #2997ff;
   --c-switch-on: #248a3d;
   --shadow-card: none;
@@ -146,6 +162,12 @@
   --c-bar-ink: #ffffff;
   --c-bar-muted: #ffffff;
   --c-glass: #000000;
+  --c-chrome: #000000;
+  --c-desk: #000000;
+  --c-desk-glow: #000000;
+  --c-bezel: #ffffff;
+  --c-bezel-rim: #ffffff;
+  --bezel: 4px;
   --c-focus: #ffe600;
   --c-switch-on: #ffe600;
   --hair: 2px;
@@ -202,6 +224,14 @@ body {
   font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* App feel: no grey tap flash, no rubber-band reveal behind the bars. */
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+
+/* Removes the double-tap-to-zoom delay on controls; pinch zoom stays available. */
+:is(a, button, summary, label, input, select, textarea) {
+  touch-action: manipulation;
 }
 
 /* Optional wider spacing (helps some readers with dyslexia or low vision). */
@@ -216,6 +246,14 @@ h1, h2, h3, h4 {
   font-weight: 600;
   line-height: 1.12;
   letter-spacing: -0.015em;
+}
+
+/* iOS large title: 34pt bold, the single h1 at the top of each screen. */
+.large-title {
+  font-size: 2.125rem;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.022em;
 }
 :root[data-spacing="wide"] :is(h1, h2, h3, h4) {
   letter-spacing: 0.02em;
@@ -291,6 +329,93 @@ a { color: inherit; }
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }
+}
+
+/* Bar material for the navigation and tab bars (iOS "chrome"): the canvas
+   colour, translucent over floating panels and the map. */
+@utility chrome {
+  background: var(--c-chrome);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
+  @media (prefers-reduced-transparency: reduce) {
+    background: var(--c-canvas);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   App frame. Phones get the app full screen. Anywhere with room for it
+   (tablet, laptop, desktop) the app is shown inside an iPhone-sized device
+   frame, centred on a soft backdrop, so it always looks like the phone app.
+   --app-h is the frame's inner height, for things sized against the screen.
+   Media queries use px: rem follows the in-app text size setting.
+   --------------------------------------------------------------------------- */
+.app-frame {
+  --app-h: 100dvh;
+  /* Room for the drawn status-bar area and home indicator (frame only). */
+  --frame-top: 0px;
+  --frame-bottom: 0px;
+  position: relative;
+  height: var(--app-h);
+  background: var(--c-canvas);
+}
+@media (min-width: 600px) and (min-height: 640px) {
+  body {
+    background:
+      radial-gradient(ellipse at 50% 0%, var(--c-desk-glow), transparent 70%),
+      var(--c-desk);
+  }
+  .app-frame {
+    --app-h: min(874px, calc(100dvh - 64px));
+    width: calc(402px + 2 * var(--bezel));
+    height: calc(var(--app-h) + 2 * var(--bezel));
+    margin: max(16px, calc((100dvh - var(--app-h) - 2 * var(--bezel)) / 2)) auto;
+    border: var(--bezel) solid var(--c-bezel);
+    border-radius: 62px;
+    overflow: hidden;
+    /* Inner rim plus a long soft drop shadow, like a product shot. */
+    box-shadow:
+      0 0 0 1.5px var(--c-bezel-rim),
+      0 30px 60px -12px rgb(0 0 0 / 0.35),
+      0 18px 36px -18px rgb(0 0 0 / 0.4);
+    /* Clip children (map canvas included) to the rounded screen in Safari. */
+    isolation: isolate;
+    --frame-top: 40px;
+    --frame-bottom: 22px;
+  }
+  /* Dynamic Island and home indicator: decoration only, never interactive. */
+  .app-frame::before,
+  .app-frame::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    z-index: 60;
+    transform: translateX(-50%);
+    pointer-events: none;
+  }
+  .app-frame::before {
+    top: 11px;
+    width: 120px;
+    height: 34px;
+    border-radius: 20px;
+    background: #000000;
+  }
+  .app-frame::after {
+    bottom: 8px;
+    width: 134px;
+    height: 5px;
+    border-radius: 3px;
+    background: var(--c-ink);
+  }
+}
+
+/* The selected tab is marked by a filled capsule (shape), not by tint alone. */
+:root[data-theme="contrast"] .tab-pill[data-active] {
+  outline: var(--hair) solid var(--c-accent);
+}
+@media (forced-colors: active) {
+  .tab-pill[data-active] { outline: 2px solid Highlight; }
 }
 
 @layer components {
@@ -453,6 +578,18 @@ a { color: inherit; }
 }
 .maplibregl-ctrl-attrib {
   font-size: 0.75rem;
+}
+/* A pulled-down sheet shows only its top edge: the page must not scroll it
+   back over the map until it is opened again. */
+main:has(> .map-sheet[data-collapsed]) {
+  overflow-y: hidden;
+}
+
+/* The sheet overlaps the bottom of the map; keep the attribution and bottom
+   controls above its rounded edge. */
+.map-under-sheet .maplibregl-ctrl-bottom-left,
+.map-under-sheet .maplibregl-ctrl-bottom-right {
+  bottom: 1.75rem;
 }
 .maplibregl-canvas:focus-visible {
   outline: 3px solid var(--c-focus);

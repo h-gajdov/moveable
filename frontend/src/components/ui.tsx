@@ -99,7 +99,7 @@ export function RadioGroup<T extends string>({ legend, name, value, options, onC
       <legend className="mb-1 px-1 font-display text-[1.0625rem] font-semibold">{legend}</legend>
       {hint && <p id={hid} className="mb-2 px-1 text-[0.875rem] text-muted">{hint}</p>}
       {variant === 'segmented' ? (
-        <div className="mt-1 grid grid-cols-[repeat(auto-fit,minmax(min(7rem,100%),1fr))] gap-1 rounded-[12px] bg-fill p-1">
+        <div className="mt-1 grid grid-cols-[repeat(auto-fit,minmax(min(4.5rem,100%),1fr))] gap-1 rounded-[12px] bg-fill p-1">
           {options.map((o) => {
             const id = `${name}-${o.value}`;
             const on = value === o.value;
@@ -107,12 +107,12 @@ export function RadioGroup<T extends string>({ legend, name, value, options, onC
               <label
                 key={o.value}
                 htmlFor={id}
-                className={`relative flex min-h-11 cursor-pointer items-center justify-center gap-1.5 rounded-[9px] px-3 py-1.5 text-center text-[0.9375rem] transition-colors has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-offset-1 has-[:focus-visible]:outline-[var(--c-focus)] ${
+                className={`relative flex min-h-11 cursor-pointer items-center justify-center gap-1 rounded-[9px] px-2 py-1.5 text-center text-[0.9375rem] transition-colors has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-offset-1 has-[:focus-visible]:outline-[var(--c-focus)] ${
                   on ? 'bg-card font-semibold shadow-[0_1px_4px_rgb(0_0_0/0.12)] ring-[length:var(--hair)] ring-hairline' : 'text-ink-2 hover:bg-fill-strong'}`}
               >
                 <input type="radio" id={id} name={name} value={o.value} checked={on}
                   onChange={() => onChange(o.value)} className="sr-only" />
-                {on && <Check aria-hidden="true" className="size-4 shrink-0" strokeWidth={3} />}
+                {on && <Check aria-hidden="true" className="size-3.5 shrink-0" strokeWidth={3} />}
                 {o.label}
               </label>
             );
@@ -211,8 +211,8 @@ export function Notice({ children, icon, className = '' }: { children: ReactNode
 export function PageTitle({ children, subtitle }: { children: ReactNode; subtitle?: ReactNode }) {
   return (
     <div className="mb-6">
-      <h1 className="text-[2rem] sm:text-[2.5rem]">{children}</h1>
-      {subtitle && <p className="mt-2 text-[1.0625rem] text-muted">{subtitle}</p>}
+      <h1 className="large-title">{children}</h1>
+      {subtitle && <p className="mt-1.5 text-[0.9375rem] text-muted">{subtitle}</p>}
     </div>
   );
 }

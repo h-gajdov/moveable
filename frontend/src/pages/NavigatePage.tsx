@@ -6,6 +6,7 @@ import { api } from '../api/client';
 import type { LngLat } from '../api/types';
 import { useAnnounce } from '../components/Announcer';
 import { Layout } from '../components/Layout';
+import { MapSheet } from '../components/MapSheet';
 import { MapView } from '../components/MapView';
 import { ROUTE_COLORS } from '../components/RouteResults';
 import { RouteLine } from '../components/RouteLine';
@@ -15,7 +16,7 @@ import { formatDistance } from '../lib/format';
 import { projectOnLine } from '../lib/geo';
 import { fullInstruction } from '../lib/instructions';
 import { speak, speechSupported, stopSpeaking, vibrate, VIBRATION } from '../lib/speech';
-import { useSettings } from '../settings/SettingsContext';
+import { prefersReducedMotion, useSettings } from '../settings/SettingsContext';
 import { selectedRoute, useTrip } from '../settings/TripContext';
 
 /** GPS fixes worse than this never move steps or trigger turn announcements. */
@@ -44,7 +45,7 @@ export function NavigatePage() {
   const offCount = useRef(0);
   const announcedAhead = useRef<number>(-1);
   const stepRef = useRef(0);
-  const panelRef = useRef<HTMLDivElement>(null);
+  const [sheetOpen, setSheetOpen] = useState(true);
 
   const instructions = route?.instructions ?? [];
   const current = instructions[step];
@@ -188,100 +189,104 @@ export function NavigatePage() {
     );
   }
 
+  /** On phones the sheet scrolls over the map; bring the map back when it takes focus. */
+  const revealMap = () => document.getElementById('main')?.scrollTo?.({ top: 0, behavior: prefersReducedMotion(settings.ui) ? 'auto' : 'smooth' });
   const poor = fix && fix.accuracyM > MAX_GUIDANCE_ACCURACY_M;
   const next = instructions[step + 1];
   const showMap = settings.ui.showMap;
   const alertBox = 'card p-4 ring-[length:var(--hair)] ring-issue';
 
+  const content = (
+    <>
+      <div>
+        <h1 className="large-title">{t('nav2.title')}</h1>
+        <p className="mt-1 text-muted">{t('nav2.intro')}</p>
+      </div>
+
+      <section aria-labelledby="now-h" className="rounded-panel bg-bar p-5 text-bar-ink shadow-[var(--shadow-float)]">
+        <h2 id="now-h" className="text-[0.9375rem] font-semibold text-bar-muted">
+          {t('nav2.current')}, {t('instr.stepLabel', { n: step + 1, total: instructions.length })}
+        </h2>
+        <p className="mt-2 font-display text-[1.75rem] font-semibold leading-tight tracking-[-0.015em]">
+          {current && fullInstruction(current, t, lang, simple)}
+        </p>
+        {next && (
+          <p className="mt-4 border-t border-white/15 pt-3 text-[1.0625rem] text-bar-ink">
+            <span className="font-semibold text-bar-muted">{t('nav2.upcoming')}: </span>
+            {fullInstruction(next, t, lang, true)}
+          </p>
+        )}
+        {arrived && <p className="mt-3 text-[1.25rem] font-semibold">{t('nav2.arrived')}</p>}
+      </section>
+
+      <div className="grid grid-cols-2 gap-2">
+        <Button onClick={() => goTo(step - 1)} disabled={step === 0} icon={<ChevronLeft aria-hidden="true" className="size-5" />}>
+          {t('nav2.prev')}
+        </Button>
+        <Button onClick={() => goTo(step + 1)} disabled={step >= instructions.length - 1} icon={<ChevronRight aria-hidden="true" className="size-5" />}>
+          {t('nav2.next')}
+        </Button>
+        <Button onClick={() => tell(step)} icon={<Repeat aria-hidden="true" className="size-5" />}>{t('nav2.repeat')}</Button>
+        <Button variant="danger" onClick={stop} icon={<Square aria-hidden="true" className="size-4" fill="currentColor" />}>{t('nav2.stop')}</Button>
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <Button variant={following ? 'tinted' : 'primary'} size="lg" aria-pressed={following}
+          onClick={following ? stopFollowing : startFollowing} icon={<LocateFixed aria-hidden="true" className="size-5" />}>
+          {t('nav2.useGps')}
+        </Button>
+        <p className="flex items-center gap-2 px-1 text-[0.9375rem]">
+          <span aria-hidden="true" className={`inline-block size-2.5 rounded-full ${following ? 'bg-ok' : 'border-2 border-control'}`} />
+          {following ? t('nav2.gpsOn') : t('nav2.gpsOff')}
+        </p>
+        {fix && !poor && <p className="px-1 text-[0.9375rem] text-muted">{t('nav2.accuracy', { m: Math.round(fix.accuracyM) })}</p>}
+        {poor && <p role="alert" className={alertBox}>{t('nav2.poorAccuracy', { m: Math.round(fix!.accuracyM) })}</p>}
+        {gpsError && <p role="alert" className={alertBox}>{gpsError}</p>}
+        {offRouteM != null && (
+          <div role="alert" className={alertBox}>
+            <p className="font-medium">{t('nav2.offRoute', { m: offRouteM })}</p>
+            <Button className="mt-3" variant="tinted" onClick={recalculate} disabled={recalculating}>
+              {recalculating ? t('nav2.recalculating') : t('nav2.recalculate')}
+            </Button>
+          </div>
+        )}
+        <Group>
+          <Checkbox
+            label={t('nav2.speechOn')}
+            checked={settings.ui.speech}
+            onChange={(v) => updateUi({ speech: v })}
+            hint={speechSupported() ? undefined : t('nav2.speechUnavailable')}
+          />
+        </Group>
+      </div>
+
+      <Notice icon={<Info aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-muted" />}>{t('nav2.safety')}</Notice>
+
+      <section aria-labelledby="all-steps-h">
+        <h2 id="all-steps-h" className="mb-2 px-1 text-[1.375rem]">{t('results.steps')}</h2>
+        <div className="card px-2 py-3">
+          <RouteLine instructions={instructions} color={ROUTE_COLORS[0]} currentIndex={step} onSelect={goTo} />
+        </div>
+      </section>
+    </>
+  );
+
+  const mapPanel = (
+    <>
+      <MapView center={route.geometry.coordinates[0]} zoom={17} routes={[route]} selectedId={route.id}
+        origin={trip.origin} destination={trip.destination} position={fix}
+        focus={fix && !poor ? { lngLat: fix.lngLat, nonce: Math.round(fix.lngLat[0] * 1e5) } : null} />
+    </>
+  );
+
   return (
     <Layout title={t('nav2.title')} wide={showMap}>
-      <div className={showMap ? 'lg:absolute lg:inset-0' : ''}>
-        <div
-          ref={panelRef}
-          className={showMap
-            ? 'panel-scroll flex flex-col gap-5 px-4 py-6 sm:px-6 lg:absolute lg:bottom-4 lg:left-4 lg:top-4 lg:z-10 lg:w-[34rem] lg:overflow-y-auto lg:rounded-panel lg:glass lg:px-6'
-            : 'flex flex-col gap-5'}
-        >
-          <div>
-            <h1 className="text-[2rem] sm:text-[2.25rem]">{t('nav2.title')}</h1>
-            <p className="mt-1 text-muted">{t('nav2.intro')}</p>
-          </div>
-
-          <section aria-labelledby="now-h" className="rounded-panel bg-bar p-5 text-bar-ink shadow-[var(--shadow-float)] sm:p-6">
-            <h2 id="now-h" className="text-[0.9375rem] font-semibold text-bar-muted">
-              {t('nav2.current')}, {t('instr.stepLabel', { n: step + 1, total: instructions.length })}
-            </h2>
-            <p className="mt-2 font-display text-[1.75rem] font-semibold leading-tight tracking-[-0.015em]">
-              {current && fullInstruction(current, t, lang, simple)}
-            </p>
-            {next && (
-              <p className="mt-4 border-t border-white/15 pt-3 text-[1.0625rem] text-bar-ink">
-                <span className="font-semibold text-bar-muted">{t('nav2.upcoming')}: </span>
-                {fullInstruction(next, t, lang, true)}
-              </p>
-            )}
-            {arrived && <p className="mt-3 text-[1.25rem] font-semibold">{t('nav2.arrived')}</p>}
-          </section>
-
-          <div className="grid grid-cols-2 gap-2">
-            <Button onClick={() => goTo(step - 1)} disabled={step === 0} icon={<ChevronLeft aria-hidden="true" className="size-5" />}>
-              {t('nav2.prev')}
-            </Button>
-            <Button onClick={() => goTo(step + 1)} disabled={step >= instructions.length - 1} icon={<ChevronRight aria-hidden="true" className="size-5" />}>
-              {t('nav2.next')}
-            </Button>
-            <Button onClick={() => tell(step)} icon={<Repeat aria-hidden="true" className="size-5" />}>{t('nav2.repeat')}</Button>
-            <Button variant="danger" onClick={stop} icon={<Square aria-hidden="true" className="size-4" fill="currentColor" />}>{t('nav2.stop')}</Button>
-          </div>
-
-          <div className="flex flex-col gap-3">
-            <Button variant={following ? 'tinted' : 'primary'} size="lg" aria-pressed={following}
-              onClick={following ? stopFollowing : startFollowing} icon={<LocateFixed aria-hidden="true" className="size-5" />}>
-              {t('nav2.useGps')}
-            </Button>
-            <p className="flex items-center gap-2 px-1 text-[0.9375rem]">
-              <span aria-hidden="true" className={`inline-block size-2.5 rounded-full ${following ? 'bg-ok' : 'border-2 border-control'}`} />
-              {following ? t('nav2.gpsOn') : t('nav2.gpsOff')}
-            </p>
-            {fix && !poor && <p className="px-1 text-[0.9375rem] text-muted">{t('nav2.accuracy', { m: Math.round(fix.accuracyM) })}</p>}
-            {poor && <p role="alert" className={alertBox}>{t('nav2.poorAccuracy', { m: Math.round(fix!.accuracyM) })}</p>}
-            {gpsError && <p role="alert" className={alertBox}>{gpsError}</p>}
-            {offRouteM != null && (
-              <div role="alert" className={alertBox}>
-                <p className="font-medium">{t('nav2.offRoute', { m: offRouteM })}</p>
-                <Button className="mt-3" variant="tinted" onClick={recalculate} disabled={recalculating}>
-                  {recalculating ? t('nav2.recalculating') : t('nav2.recalculate')}
-                </Button>
-              </div>
-            )}
-            <Group>
-              <Checkbox
-                label={t('nav2.speechOn')}
-                checked={settings.ui.speech}
-                onChange={(v) => updateUi({ speech: v })}
-                hint={speechSupported() ? undefined : t('nav2.speechUnavailable')}
-              />
-            </Group>
-          </div>
-
-          <Notice icon={<Info aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-muted" />}>{t('nav2.safety')}</Notice>
-
-          <section aria-labelledby="all-steps-h">
-            <h2 id="all-steps-h" className="mb-2 px-1 text-[1.375rem]">{t('results.steps')}</h2>
-            <div className="card px-2 py-3">
-              <RouteLine instructions={instructions} color={ROUTE_COLORS[0]} currentIndex={step} onSelect={goTo} />
-            </div>
-          </section>
-        </div>
-        {showMap && (
-          <section aria-label={t('common.mapRegion')}
-            className="relative mx-4 mb-6 h-[50vh] overflow-hidden rounded-panel card sm:mx-6 lg:absolute lg:inset-0 lg:m-0 lg:h-auto lg:rounded-none">
-            <MapView center={route.geometry.coordinates[0]} zoom={17} routes={[route]} selectedId={route.id}
-              origin={trip.origin} destination={trip.destination} position={fix} obstruct={panelRef}
-              focus={fix && !poor ? { lngLat: fix.lngLat, nonce: Math.round(fix.lngLat[0] * 1e5) } : null} />
-          </section>
-        )}
-      </div>
+      {showMap ? (
+        <MapSheet map={mapPanel} mapLabel={t('common.mapRegion')} onMapFocus={revealMap} open={sheetOpen}
+          onOpenChange={setSheetOpen} className="flex flex-col gap-5">
+          {content}
+        </MapSheet>
+      ) : <div className="flex flex-col gap-5">{content}</div>}
     </Layout>
   );
 }

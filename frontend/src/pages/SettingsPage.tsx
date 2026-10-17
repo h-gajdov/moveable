@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ProfileCode } from '../api/types';
 import { useAnnounce } from '../components/Announcer';
-import { Layout } from '../components/Layout';
+import { LanguageList, Layout } from '../components/Layout';
 import { ProfilePicker } from '../components/NeedsEditor';
 import { Button, Checkbox, Footnote, Group, GroupHeading, PageTitle, RadioGroup, Select } from '../components/ui';
 import { currentLanguage } from '../i18n';
@@ -21,14 +21,19 @@ export function SettingsPage() {
     <Layout title={t('settings.title')}>
       <PageTitle subtitle={t('settings.intro')}>{t('settings.title')}</PageTitle>
 
+      <section aria-labelledby="lang-h" className="mt-8 flex flex-col gap-3">
+        <GroupHeading id="lang-h">{t('nav.language')}</GroupHeading>
+        <LanguageList className="card overflow-hidden" />
+      </section>
+
       <section aria-labelledby="disp-h" className="mt-10 flex flex-col gap-5">
         <GroupHeading id="disp-h">{t('settings.display')}</GroupHeading>
-        <RadioGroup<InterfaceSettings['theme']> variant="segmented" legend={t('settings.theme')} name="theme" value={ui.theme}
+        <RadioGroup<InterfaceSettings['theme']> legend={t('settings.theme')} name="theme" value={ui.theme}
           onChange={(v) => updateUi({ theme: v })}
           options={(['system', 'light', 'dark', 'contrast'] as const).map((v) => ({ value: v, label: t(`settings.themes.${v}`) }))} />
         <RadioGroup<string> variant="segmented" legend={t('settings.textSize')} name="textScale" value={String(ui.textScale)}
           onChange={(v) => updateUi({ textScale: Number(v) as InterfaceSettings['textScale'] })}
-          options={['1', '1.25', '1.5', '2'].map((v) => ({ value: v, label: `${Math.round(Number(v) * 100)} %` }))} />
+          options={['1', '1.25', '1.5', '2'].map((v) => ({ value: v, label: `${Math.round(Number(v) * 100)}\u00a0%` }))} />
         <RadioGroup<InterfaceSettings['motion']> variant="segmented" legend={t('settings.motion')} name="motion" value={ui.motion}
           onChange={(v) => updateUi({ motion: v })}
           options={(['system', 'reduce'] as const).map((v) => ({ value: v, label: t(`settings.motions.${v}`) }))} />

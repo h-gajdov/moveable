@@ -11,10 +11,16 @@
     "help": "Ndihmë dhe privatësi",
     "admin": "Moderimi",
     "skip": "Kalo te përmbajtja kryesore",
-    "language": "Gjuha"
+    "language": "Gjuha",
+    "tabPlan": "Rruga",
+    "tabReport": "Raporto",
+    "tabSettings": "Cilësimet",
+    "tabHelp": "Ndihmë"
   },
   "lang": { "mk": "Македонски", "sq": "Shqip", "en": "English" },
   "common": {
+    "sheetShow": "Shfaq detajet",
+    "sheetHide": "Fshih detajet, shfaq hartën e plotë",
     "close": "Mbyll",
     "cancel": "Anulo",
     "retry": "Provo përsëri",
@@ -55,6 +61,8 @@
     "profileLegend": "Planifiko rrugën për",
     "adjust": "Përshtat nevojat",
     "findRoute": "Gjej rrugën",
+    "editTrip": "Ndrysho",
+    "editTripLabel": "Ndrysho nisjen, destinacionin ose nevojat",
     "finding": "Po kërkoj rrugë…",
     "missingPoints": "Zgjidhni fillimisht nisjen dhe destinacionin.",
     "mapPickActive": "Po zgjidhni {{field}} në hartë. Prekni ose klikoni hartën, ose lëvizeni me shigjetat dhe shtypni Enter për pikën në qendër. Shtypni Escape për të anuluar.",

@@ -2,7 +2,7 @@ import type { FeatureCollection } from 'geojson';
 import maplibregl, { type GeoJSONSource, type Map as MLMap } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { Layers } from 'lucide-react';
-import { useEffect, useRef, useState, type RefObject } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../api/client';
 import type { ChosenLocation, LngLat, RouteOption } from '../api/types';
@@ -13,6 +13,8 @@ import { Button, Checkbox } from './ui';
 const STYLE_URL = (import.meta.env.VITE_MAP_STYLE_URL as string | undefined) ?? 'https://tiles.openfreemap.org/styles/liberty';
 const EMPTY: FeatureCollection = { type: 'FeatureCollection', features: [] };
 const DASHES: (number[] | undefined)[] = [undefined, [2.5, 1.5], [0.5, 1.5]];
+/** Room around fitted routes: the floating controls sit top right and the sheet overlaps the bottom edge. */
+const FIT_PADDING = { top: 70, right: 60, bottom: 90, left: 50 };
 
 function cssVar(name: string) {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#0071e3';
@@ -23,23 +25,12 @@ export interface MapFocus {
   nonce: number;
 }
 
-/** Map padding that keeps fitted routes clear of a panel floating over the map. */
-function fitPadding(map: MLMap, obstruct?: RefObject<HTMLElement | null>) {
-  const pad = { top: 60, right: 60, bottom: 60, left: 60 };
-  const el = obstruct?.current;
-  if (el && getComputedStyle(el).position === 'absolute') {
-    const covered = el.getBoundingClientRect().right - map.getContainer().getBoundingClientRect().left;
-    if (covered > 0 && covered < map.getContainer().clientWidth - 200) pad.left += covered;
-  }
-  return pad;
-}
-
 /**
  * Visual map. Every piece of information shown here is also available as text
  * elsewhere; the map is never required. Keyboard: arrows pan, +/- zoom, and in
  * pick mode Enter chooses the centre point.
  */
-export function MapView({ center, zoom, routes, selectedId, origin, destination, pickLabel, onPick, onCancelPick, focus, position, obstruct }: {
+export function MapView({ center, zoom, routes, selectedId, origin, destination, pickLabel, onPick, onCancelPick, focus, position }: {
   center: LngLat;
   zoom: number;
   routes: RouteOption[];
@@ -51,8 +42,6 @@ export function MapView({ center, zoom, routes, selectedId, origin, destination,
   onCancelPick?: () => void;
   focus?: MapFocus | null;
   position?: { lngLat: LngLat; accuracyM: number } | null;
-  /** Element floating over the map (e.g. the side panel) that fitted routes should avoid. */
-  obstruct?: RefObject<HTMLElement | null>;
 }) {
   const { t } = useTranslation();
   const { settings } = useSettings();
@@ -181,7 +170,7 @@ export function MapView({ center, zoom, routes, selectedId, origin, destination,
     if (sel >= 0) map.moveLayer(`route-${sel}`);
     if (routes.length > 0) {
       const b = bboxOf(routes.flatMap((r) => r.geometry.coordinates));
-      map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: fitPadding(map, obstruct), duration: reduced ? 0 : 600, maxZoom: 17 });
+      map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: FIT_PADDING, duration: reduced ? 0 : 600, maxZoom: 17 });
     }
   }, [routes, selectedId, ready, settings.ui.theme, reduced]);
 
@@ -286,7 +275,7 @@ export function MapView({ center, zoom, routes, selectedId, origin, destination,
           </div>
         </>
       )}
-      <details className="glass group absolute right-2.5 top-[118px] max-w-[min(18rem,calc(100%-1.25rem))] rounded-[14px] text-[0.9375rem]">
+      <details className="glass group absolute right-2.5 top-[118px] max-h-[calc(100%-128px)] max-w-[min(18rem,calc(100%-1.25rem))] overflow-y-auto rounded-[14px] text-[0.9375rem]">
         <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-[14px] px-3 font-medium [&::-webkit-details-marker]:hidden">
           <Layers aria-hidden="true" className="size-5" />
           {t('map.layers')}
