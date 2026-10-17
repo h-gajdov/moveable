@@ -522,17 +522,20 @@
   },
   "parking": {
     "title": "Parkim për persona me aftësi të kufizuara",
-    "notice": "Shfaq vendet e rezervuara të shënuara në hartë dhe parkingjet me vende për persona me aftësi të kufizuara brenda 2 km. Disponueshmëria, rregullat e lejeve dhe qasja pa shkallë nuk janë verifikuar.",
-    "near": "Kërko pranë",
-    "center": "Qendra e Shkupit",
-    "choosePoint": "Zgjidhni një vendndodhje më sipër ose kërkoni pranë qendrës.",
-    "find": "Gjej parkim",
+    "toggle": "Parkim për persona me aftësi të kufizuara",
+    "shown": "Parkimet për persona me aftësi të kufizuara shfaqen në hartë dhe renditen poshtë udhëtimit.",
+    "hidden": "Parkimet për persona me aftësi të kufizuara u fshehën.",
+    "notice": "Vende të rezervuara të shënuara në hartë dhe parkingje me vende për persona me aftësi të kufizuara. Disponueshmëria, rregullat e lejeve dhe qasja pa shkallë nuk janë verifikuar.",
+    "mapCenter": "qendrës së hartës",
+    "center": "qendrës së Shkupit",
     "loading": "Duke kërkuar parkim…",
-    "results": "{{count}} vendndodhje parkimi në hartë pranë {{label}} (deri në 20).",
-    "empty": "Nuk ka parkim të shënuar për persona me aftësi të kufizuara brenda 2 km nga {{label}}. Kjo nuk do të thotë se nuk ka vende.",
+    "results": "{{count}} vendndodhje parkimi në hartë pranë {{label}}, më të afërtat së pari (deri në 50).",
+    "empty": "Nuk ka parkim të shënuar për persona me aftësi të kufizuara pranë {{label}}. Kjo nuk do të thotë se nuk ka vende.",
+    "emptyMapHint": "Lëvizni hartën ose zvogëloni për të kërkuar një zonë më të gjerë.",
     "unnamed": "Parkim për persona me aftësi të kufizuara (pa emër)",
-    "distance": "{{distance}} në vijë të drejtë",
+    "distance": "{{distance}} nga {{label}} në vijë të drejtë",
     "useOrigin": "Përdor si nisje",
-    "useDestination": "Përdor si destinacion"
+    "useDestination": "Përdor si destinacion",
+    "showOnMap": "Shfaq në hartë"
   }
 }

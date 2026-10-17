@@ -1,6 +1,6 @@
 import type { FeatureCollection } from 'geojson';
 import type {
-  AppConfig, ObstacleReportInput, ObstacleView, Place, Profile, RouteRequest, RouteResponse,
+  AppConfig, ObstacleReportInput, ObstacleView, ParkingSpot, Place, Profile, RouteRequest, RouteResponse,
 } from './types';
 
 const BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? '';
@@ -53,9 +53,6 @@ const json = (body: unknown): RequestInit => ({
 });
 
 export const api = {
-  parking: (lat: number, lon: number, signal?: AbortSignal) =>
-    request<{ id: string; names: Place['names']; lat: number; lon: number; distanceM: number }[]>(
-      `/api/places/parking?lat=${lat}&lon=${lon}`, { signal }),
   config: () => request<AppConfig>('/api/config'),
   profiles: () => request<{ profiles: Profile[] }>('/api/routing-profiles'),
   route: (req: RouteRequest, signal?: AbortSignal) => request<RouteResponse>('/api/routes', { ...json(req), signal }, 60_000),
@@ -64,6 +61,8 @@ export const api = {
   reverse: (lat: number, lon: number) =>
     request<{ lat: number; lon: number; street?: { names: Record<string, string>; distanceM: number } }>(
       `/api/places/reverse?lat=${lat}&lon=${lon}`),
+  parking: (lat: number, lon: number, radiusM: number, signal?: AbortSignal) =>
+    request<ParkingSpot[]>(`/api/places/parking?lat=${lat}&lon=${lon}&radiusM=${radiusM}&limit=50`, { signal }),
   obstacles: (bbox: string) => request<ObstacleView[]>(`/api/obstacles?bbox=${bbox}`),
   mapFeatures: (bbox: string) => request<FeatureCollection>(`/api/map-features?bbox=${bbox}`),
   coverage: (bbox: string) =>

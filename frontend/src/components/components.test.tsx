@@ -5,12 +5,12 @@ import type { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import i18n from '../i18n';
-import type { RouteResponse } from '../api/types';
-import { DEFAULT_SETTINGS, SettingsProvider } from '../settings/SettingsContext';
+import type { LngLat, ParkingSpot, RouteResponse } from '../api/types';
+import { DEFAULT_SETTINGS, SettingsProvider, useSettings } from '../settings/SettingsContext';
 import { AnnouncerProvider } from './Announcer';
 import { LocationInput } from './LocationInput';
 import { RouteResults } from './RouteResults';
-import { ParkingSearch } from './ParkingSearch';
+import { ParkingList, ParkingToggle, useParking } from './Parking';
 
 function wrap(ui: ReactNode) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -30,27 +30,48 @@ beforeEach(async () => {
   vi.restoreAllMocks();
 });
 
-describe('ParkingSearch', () => {
-  it('finds nearby parking and selects an unnamed space without the map', async () => {
+describe('Disabled parking', () => {
+  function Harness({ onSelect = vi.fn(), onShowOnMap }: {
+    onSelect?: (p: ParkingSpot, field: 'origin' | 'destination') => void; onShowOnMap?: (p: ParkingSpot) => void;
+  }) {
+    const { settings } = useSettings();
+    const area = { center: [21.43, 42] as LngLat, radiusM: 1234, label: 'the centre of the map' };
+    const query = useParking(area, settings.ui.showParking);
+    return <>
+      <ParkingToggle />
+      {settings.ui.showParking && <ParkingList area={area} query={query} onSelect={onSelect} onShowOnMap={onShowOnMap} />}
+    </>;
+  }
+
+  it('is hidden until the toggle is pressed, then lists spots and offers them as start', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify([
       { id: 'p1', names: {}, lat: 41.996, lon: 21.432, distanceM: 100 },
     ])));
     const onSelect = vi.fn();
-    wrap(<ParkingSearch center={[21.43, 42]} origin={null} destination={null} onSelect={onSelect} />);
-    expect(screen.getByRole('button', { name: 'Find disabled parking' })).toBeDisabled();
-    await userEvent.selectOptions(screen.getByRole('combobox'), 'center');
-    await userEvent.click(screen.getByRole('button', { name: 'Find disabled parking' }));
-    await userEvent.click(await screen.findByRole('button', { name: 'Use as start' }));
-    expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/api/places/parking?lat=42&lon=21.43'), expect.anything());
-    expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ lat: 41.996, lon: 21.432, source: 'search' }), 'origin');
+    wrap(<Harness onSelect={onSelect} onShowOnMap={vi.fn()} />);
+    const toggle = screen.getByRole('button', { name: 'Parking for disabled people' });
+    expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.queryByRole('heading', { name: 'Disabled parking' })).not.toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    await userEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    expect(await screen.findByText(/1 mapped parking locations near the centre of the map/)).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/api/places/parking?lat=42&lon=21.43&radiusM=1300&limit=50'), expect.anything());
+    expect(screen.getByRole('heading', { name: 'Disabled parking (unnamed)' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Use as start' }));
+    expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: 'p1' }), 'origin');
+
+    await userEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.queryByRole('heading', { name: 'Disabled parking' })).not.toBeInTheDocument();
   });
 
   it('explains that an empty result does not establish absence of parking', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('[]'));
-    wrap(<ParkingSearch center={[21.43, 42]} origin={null}
-      destination={{ lat: 42, lon: 21.43, label: 'Square', source: 'search' }} onSelect={vi.fn()} />);
-    await userEvent.click(screen.getByRole('button', { name: 'Find disabled parking' }));
-    expect(await screen.findByText(/This does not mean no spaces exist/)).toBeInTheDocument();
+    wrap(<Harness onShowOnMap={vi.fn()} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Parking for disabled people' }));
+    expect(await screen.findByText(/This does not mean no spaces exist\. Move the map/)).toBeInTheDocument();
   });
 });
 

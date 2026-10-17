@@ -12,6 +12,8 @@ export interface InterfaceSettings {
   wideSpacing: boolean;
   motion: 'system' | 'reduce';
   showMap: boolean;
+  /** Show mapped disabled parking on the plan map and as a list. */
+  showParking: boolean;
   instructionDetail: 'detailed' | 'simple';
   speech: boolean;
   speechRate: number;
@@ -36,6 +38,7 @@ export const DEFAULT_SETTINGS: Settings = {
     wideSpacing: false,
     motion: 'system',
     showMap: true,
+    showParking: false,
     instructionDetail: 'detailed',
     speech: false,
     speechRate: 1,

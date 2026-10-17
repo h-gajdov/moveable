@@ -579,6 +579,29 @@ a { color: inherit; }
 .maplibregl-ctrl-attrib {
   font-size: 0.75rem;
 }
+/* Popups (parking signs) follow the theme. */
+.map-popup {
+  z-index: 5;
+}
+.map-popup .maplibregl-popup-content {
+  background: var(--c-card);
+  color: var(--c-ink);
+  border-radius: 14px;
+  padding: 0.875rem;
+  box-shadow: var(--shadow-float);
+  font: inherit;
+  font-size: 0.9375rem;
+}
+.map-popup.maplibregl-popup-anchor-bottom .maplibregl-popup-tip { border-top-color: var(--c-card); }
+.map-popup.maplibregl-popup-anchor-top .maplibregl-popup-tip { border-bottom-color: var(--c-card); }
+.map-popup.maplibregl-popup-anchor-left .maplibregl-popup-tip { border-right-color: var(--c-card); }
+.map-popup.maplibregl-popup-anchor-right .maplibregl-popup-tip { border-left-color: var(--c-card); }
+.map-popup .maplibregl-popup-close-button {
+  width: 44px;
+  height: 44px;
+  font-size: 1.25rem;
+  color: var(--c-muted);
+}
 /* A pulled-down sheet shows only its top edge: the page must not scroll it
    back over the map until it is opened again. */
 main:has(> .map-sheet[data-collapsed]) {

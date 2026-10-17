@@ -182,6 +182,16 @@ export interface Place {
   lon: number;
 }
 
+/** Mapped disabled parking (not live availability). */
+export interface ParkingSpot {
+  id: string;
+  names: Names;
+  lat: number;
+  lon: number;
+  /** Straight-line distance from the search point. */
+  distanceM: number;
+}
+
 export interface AppConfig {
   region: { code: string; names: Names; bbox: [number, number, number, number]; center: LngLat; zoom: number };
   obstacleCategories: string[];

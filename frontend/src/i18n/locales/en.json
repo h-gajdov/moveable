@@ -522,17 +522,20 @@
   },
   "parking": {
     "title": "Disabled parking",
-    "notice": "Shows explicitly mapped reserved spaces and car parks with disabled spaces within 2 km. Availability, permit rules and step-free access are not verified.",
-    "near": "Search near",
+    "toggle": "Parking for disabled people",
+    "shown": "Disabled parking shown on the map and listed below the trip.",
+    "hidden": "Disabled parking hidden.",
+    "notice": "Explicitly mapped reserved spaces and car parks with disabled spaces. Availability, permit rules and step-free access are not verified.",
+    "mapCenter": "the centre of the map",
     "center": "Skopje city centre",
-    "choosePoint": "Choose a location above, or search near the city centre.",
-    "find": "Find disabled parking",
     "loading": "Searching for parking…",
-    "results": "{{count}} mapped parking locations near {{label}} (up to 20).",
-    "empty": "No disabled parking is mapped within 2 km of {{label}}. This does not mean no spaces exist.",
+    "results": "{{count}} mapped parking locations near {{label}}, nearest first (up to 50).",
+    "empty": "No disabled parking is mapped near {{label}}. This does not mean no spaces exist.",
+    "emptyMapHint": "Move the map or zoom out to search a wider area.",
     "unnamed": "Disabled parking (unnamed)",
-    "distance": "{{distance}} away in a straight line",
+    "distance": "{{distance}} from {{label}} in a straight line",
     "useOrigin": "Use as start",
-    "useDestination": "Use as destination"
+    "useDestination": "Use as destination",
+    "showOnMap": "Show on map"
   }
 }

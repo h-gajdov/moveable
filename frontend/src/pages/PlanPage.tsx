@@ -4,13 +4,13 @@ import { ArrowUpDown, ChevronRight, Map as MapIcon } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../api/client';
-import type { ChosenLocation, LngLat, RouteRequest } from '../api/types';
+import type { ChosenLocation, LngLat, ParkingSpot, RouteRequest } from '../api/types';
 import { useAnnounce } from '../components/Announcer';
 import { Layout } from '../components/Layout';
 import { LocationInput } from '../components/LocationInput';
 import { MapSheet } from '../components/MapSheet';
-import { ParkingSearch } from '../components/ParkingSearch';
 import { MapView, type MapFocus } from '../components/MapView';
+import { ParkingList, ParkingToggle, parkingLabel, useParking, type ParkingArea } from '../components/Parking';
 import { PreferencesEditor, ProfilePicker } from '../components/NeedsEditor';
 import { RouteResults } from '../components/RouteResults';
 import { Button, ErrorBox, Notice } from '../components/ui';
@@ -53,6 +53,7 @@ export function PlanPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(true);
+  const [mapView, setMapView] = useState<{ center: LngLat; radiusM: number } | null>(null);
   const needsRef = useRef<HTMLDetailsElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -132,6 +133,27 @@ export function PlanPage() {
   const routes = trip.response?.routes ?? [];
   const showMap = settings.ui.showMap;
   const errorCode = route.error instanceof ApiError ? route.error.code : route.error ? 'default' : null;
+  const showParking = settings.ui.showParking;
+  // With the map, parking follows what is on screen; without it, the chosen points.
+  const near = trip.destination ?? trip.origin;
+  const parkingArea: ParkingArea | null = showMap
+    ? mapView && { ...mapView, label: t('parking.mapCenter') }
+    : { center: near ? [near.lon, near.lat] : center, radiusM: 2000, label: near?.label ?? t('parking.center') };
+  const parking = useParking(parkingArea, showParking);
+
+  function chooseParking(p: ParkingSpot, field: 'origin' | 'destination') {
+    const label = parkingLabel(p, t('parking.unnamed'));
+    (field === 'origin' ? trip.setOrigin : trip.setDestination)({ lat: p.lat, lon: p.lon, label, source: 'search' });
+    setFocus({ lngLat: [p.lon, p.lat], nonce: Date.now() });
+    announce(t('plan.selected', { field: t(field === 'origin' ? 'plan.from' : 'plan.to'), label }));
+  }
+
+  function showParkingOnMap(p: ParkingSpot) {
+    setFocus({ lngLat: [p.lon, p.lat], nonce: Date.now() });
+    setSheetOpen(false);
+    revealMap();
+  }
+
   // Once there is a route, the form folds into a short trip summary so the
   // map and the route choices fit on screen together.
   const showForm = editing || !trip.response || trip.response.routes.length === 0;
@@ -218,15 +240,6 @@ export function PlanPage() {
         </div>
       </form>}
 
-      {showForm && (
-        <ParkingSearch center={center} origin={trip.origin} destination={trip.destination}
-          onSelect={(location, field) => {
-            (field === 'origin' ? trip.setOrigin : trip.setDestination)(location);
-            if (trip.lastRequest) trip.setResult(trip.lastRequest, null);
-            setFocus({ lngLat: [location.lon, location.lat], nonce: Date.now() });
-          }} />
-      )}
-
       {route.isPending && <p role="status" className="px-1 text-muted">{t('plan.finding')}</p>}
       {errorCode && !route.isPending && (
         <ErrorBox onRetry={() => submit()} retryLabel={t('common.retry')}>
@@ -249,6 +262,11 @@ export function PlanPage() {
             }
           }}
         />
+      )}
+      {!showMap && <ParkingToggle className="self-start" />}
+      {showParking && (
+        <ParkingList area={parkingArea} query={parking} onSelect={chooseParking}
+          onShowOnMap={showMap ? showParkingOnMap : undefined} />
       )}
       {!showMap && (
         <Notice className="flex-wrap items-center justify-between">
@@ -278,7 +296,15 @@ export function PlanPage() {
           setSheetOpen(true);
         }}
         focus={focus}
+        parking={showParking ? parking.data : null}
+        onViewChange={setMapView}
+        onParkingSelect={chooseParking}
       />
+      {!pickField && (
+        <div className="absolute left-2.5 top-2.5">
+          <ParkingToggle />
+        </div>
+      )}
       {!pickField && (
         <div className="absolute right-16 top-2.5">
           <Button variant="secondary" className="glass bg-[var(--c-glass)]!" icon={<MapIcon aria-hidden="true" className="size-4.5" />}

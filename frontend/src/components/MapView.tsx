@@ -5,9 +5,10 @@ import { Layers } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../api/client';
-import type { ChosenLocation, LngLat, RouteOption } from '../api/types';
-import { bboxOf } from '../lib/geo';
+import type { ChosenLocation, LngLat, ParkingSpot, RouteOption } from '../api/types';
+import { bboxOf, distanceM } from '../lib/geo';
 import { prefersReducedMotion, useSettings } from '../settings/SettingsContext';
+import { parkingLabel } from './Parking';
 import { Button, Checkbox } from './ui';
 
 const STYLE_URL = (import.meta.env.VITE_MAP_STYLE_URL as string | undefined) ?? 'https://tiles.openfreemap.org/styles/liberty';
@@ -20,6 +21,44 @@ function cssVar(name: string) {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#0071e3';
 }
 
+/**
+ * Blue square with the wheelchair symbol, as painted on reserved bays. Its
+ * square shape sets it apart from the round obstacle and feature markers.
+ */
+function parkingIcon(): ImageData | null {
+  const size = 64;
+  const ctx = document.createElement('canvas').getContext('2d');
+  if (!ctx) return null;
+  ctx.canvas.width = ctx.canvas.height = size;
+  ctx.fillStyle = '#1659b8';
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  ctx.roundRect(3, 3, size - 6, size - 6, 12);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = '#ffffff';
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  ctx.arc(30, 15, 5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  ctx.moveTo(29, 23);
+  ctx.lineTo(29, 37);
+  ctx.lineTo(41, 37);
+  ctx.lineTo(45, 48);
+  ctx.moveTo(29, 29);
+  ctx.lineTo(39, 29);
+  ctx.stroke();
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.arc(28, 41, 11, 0.15 * Math.PI, 1.3 * Math.PI);
+  ctx.stroke();
+  return ctx.getImageData(0, 0, size, size);
+}
+
 export interface MapFocus {
   lngLat: LngLat;
   nonce: number;
@@ -30,7 +69,8 @@ export interface MapFocus {
  * elsewhere; the map is never required. Keyboard: arrows pan, +/- zoom, and in
  * pick mode Enter chooses the centre point.
  */
-export function MapView({ center, zoom, routes, selectedId, origin, destination, pickLabel, onPick, onCancelPick, focus, position }: {
+export function MapView({ center, zoom, routes, selectedId, origin, destination, pickLabel, onPick, onCancelPick, focus, position,
+  parking, onViewChange, onParkingSelect }: {
   center: LngLat;
   zoom: number;
   routes: RouteOption[];
@@ -42,6 +82,11 @@ export function MapView({ center, zoom, routes, selectedId, origin, destination,
   onCancelPick?: () => void;
   focus?: MapFocus | null;
   position?: { lngLat: LngLat; accuracyM: number } | null;
+  /** Disabled parking to draw; null or undefined draws none. */
+  parking?: ParkingSpot[] | null;
+  /** Called with the visible area after every move (and once when ready). */
+  onViewChange?: (view: { center: LngLat; radiusM: number }) => void;
+  onParkingSelect?: (spot: ParkingSpot, field: 'origin' | 'destination') => void;
 }) {
   const { t } = useTranslation();
   const { settings } = useSettings();
@@ -54,6 +99,9 @@ export function MapView({ center, zoom, routes, selectedId, origin, destination,
   const [zoomTooLow, setZoomTooLow] = useState(false);
   const pickRef = useRef({ pickLabel, onPick, onCancelPick });
   pickRef.current = { pickLabel, onPick, onCancelPick };
+  const parkingRef = useRef({ parking, onViewChange, onParkingSelect, t });
+  parkingRef.current = { parking, onViewChange, onParkingSelect, t };
+  const popup = useRef<maplibregl.Popup | null>(null);
   const reduced = prefersReducedMotion(settings.ui);
 
   // Create the map once.
@@ -87,7 +135,9 @@ export function MapView({ center, zoom, routes, selectedId, origin, destination,
     });
     map.on('load', () => {
       const add = (id: string) => map.addSource(id, { type: 'geojson', data: EMPTY });
-      ['routes', 'obstacles', 'features', 'coverage', 'position'].forEach(add);
+      ['routes', 'obstacles', 'features', 'coverage', 'parking', 'position'].forEach(add);
+      const icon = parkingIcon();
+      if (icon) map.addImage('parking-disabled', icon, { pixelRatio: 2 });
       map.addLayer({ id: 'coverage', type: 'fill', source: 'coverage', paint: {
         'fill-color': '#3634a3', 'fill-opacity': ['interpolate', ['linear'], ['get', 'completeness'], 0, 0.05, 0.6, 0.45],
       } });
@@ -106,6 +156,10 @@ export function MapView({ center, zoom, routes, selectedId, origin, destination,
         'circle-radius': 6, 'circle-stroke-width': 2, 'circle-stroke-color': '#ffffff',
         'circle-color': ['match', ['get', 'kind'], 'STAIRS', '#c4000f', 'CROSSING', '#0071e3', 'BARRIER', '#3634a3', 'KERB', '#3634a3', '#1e7b34'],
       } });
+      if (icon) map.addLayer({ id: 'parking', type: 'symbol', source: 'parking', layout: {
+        'icon-image': 'parking-disabled', 'icon-allow-overlap': true, 'icon-ignore-placement': true,
+        'icon-size': ['interpolate', ['linear'], ['zoom'], 12, 0.7, 16, 1],
+      } });
       map.addLayer({ id: 'obstacles', type: 'circle', source: 'obstacles', paint: {
         'circle-radius': 9, 'circle-stroke-width': 3,
         'circle-color': ['case', ['get', 'verified'], '#c4000f', '#ffffff'],
@@ -118,10 +172,50 @@ export function MapView({ center, zoom, routes, selectedId, origin, destination,
         'circle-radius': 8, 'circle-color': '#0071e3', 'circle-stroke-width': 3, 'circle-stroke-color': '#ffffff',
       } });
       setReady(true);
+      reportView();
     });
+    const reportView = () => {
+      const c = map.getCenter();
+      const ne = map.getBounds().getNorthEast();
+      parkingRef.current.onViewChange?.({ center: [c.lng, c.lat], radiusM: distanceM([c.lng, c.lat], [ne.lng, ne.lat]) });
+    };
+    map.on('moveend', reportView);
     map.on('click', (e) => {
       if (pickRef.current.pickLabel && pickRef.current.onPick) pickRef.current.onPick([e.lngLat.lng, e.lngLat.lat]);
     });
+    // Tapping a parking sign names it and offers it as start or destination.
+    map.on('click', 'parking', (e) => {
+      if (pickRef.current.pickLabel) return;
+      const { parking: spots, onParkingSelect: select, t: tr } = parkingRef.current;
+      const spot = spots?.find((p) => p.id === e.features?.[0]?.properties?.id);
+      if (!spot) return;
+      const body = document.createElement('div');
+      body.className = 'flex flex-col gap-2';
+      const title = document.createElement('p');
+      title.className = 'font-semibold pr-10 text-[1.0625rem]';
+      title.textContent = parkingLabel(spot, tr('parking.unnamed'));
+      body.append(title);
+      if (select) {
+        for (const field of ['origin', 'destination'] as const) {
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'min-h-11 rounded-pill bg-tint px-4 font-medium text-link hover:bg-fill';
+          b.textContent = tr(field === 'origin' ? 'parking.useOrigin' : 'parking.useDestination');
+          b.addEventListener('click', () => {
+            popup.current?.remove();
+            select(spot, field);
+          });
+          body.append(b);
+        }
+      }
+      popup.current?.remove();
+      // Open downwards near the top, where the floating buttons are.
+      const below = map.project([spot.lon, spot.lat]).y < map.getContainer().clientHeight * 0.45;
+      popup.current = new maplibregl.Popup({ maxWidth: '16rem', className: 'map-popup', anchor: below ? 'top' : 'bottom', offset: 18 })
+        .setLngLat([spot.lon, spot.lat]).setDOMContent(body).addTo(map);
+    });
+    map.on('mouseenter', 'parking', () => { map.getCanvas().style.cursor = 'pointer'; });
+    map.on('mouseleave', 'parking', () => { map.getCanvas().style.cursor = ''; });
     const canvas = map.getCanvasContainer();
     const onKey = (e: KeyboardEvent) => {
       if (!pickRef.current.pickLabel) return;
@@ -215,6 +309,17 @@ export function MapView({ center, zoom, routes, selectedId, origin, destination,
     src.setData({ type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'Point', coordinates: position.lngLat },
       properties: { radiusPx: Math.min(200, position.accuracyM / metersPerPx) } }] });
   }, [position, ready]);
+
+  // Disabled parking (loaded by the page, which also lists it as text).
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    (map.getSource('parking') as GeoJSONSource).setData(parking ? {
+      type: 'FeatureCollection',
+      features: parking.map((p) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [p.lon, p.lat] }, properties: { id: p.id } })),
+    } : EMPTY);
+    if (!parking) popup.current?.remove();
+  }, [parking, ready]);
 
   // Overlays loaded for the visible area.
   useEffect(() => {
