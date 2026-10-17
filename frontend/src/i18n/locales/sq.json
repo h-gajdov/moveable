@@ -385,7 +385,23 @@
     "needCategory": "Zgjidhni çfarë është pengesa.",
     "needImpact": "Zgjidhni sa ju pengon.",
     "errorSummary": "Ju lutemi rregulloni sa vijon:",
-    "website": "Lëreni këtë fushë bosh"
+    "website": "Lëreni këtë fushë bosh",
+    "stepOf": "Hapi {{n}} nga {{total}}",
+    "steps": {
+      "location": "Vendndodhja",
+      "category": "Pengesa",
+      "impact": "Ndikimi",
+      "details": "Detajet",
+      "review": "Kontrollo dhe dërgo"
+    },
+    "next": "Vazhdo",
+    "backToReview": "Kthehu te përmbledhja",
+    "reviewIntro": "Kontrollojeni raportin para se ta dërgoni. Mund ta ndryshoni çdo përgjigje.",
+    "change": "Ndrysho",
+    "notGiven": "Nuk është dhënë",
+    "reviewDuration": "Kohëzgjatja",
+    "temporaryFor": "E përkohshme, rreth {{duration}}",
+    "notTemporary": "Nuk është e përkohshme"
   },
   "settings": {
     "title": "Cilësimet",

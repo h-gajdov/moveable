@@ -88,12 +88,46 @@ test('missing destination gives an accessible error', async ({ page }) => {
   await expect(page.getByRole('alert')).toHaveText('Choose a start and a destination first.');
 });
 
-test('obstacle report form validates and labels everything', async ({ page }) => {
+test('obstacle report form goes step by step and validates each step', async ({ page }) => {
+  await page.route('**/api/obstacles/reports', (route) =>
+    route.fulfill({ status: 201, contentType: 'application/json', body: '{"id":"test","status":"PENDING"}' }));
   await page.goto('/report');
-  await page.getByRole('button', { name: 'Send report' }).click();
+  const stepHeading = page.getByRole('heading', { name: /Step \d of 5/, level: 2 });
+  await expect(stepHeading).toHaveText(/Step 1 of 5\s*Location/);
+  await page.getByRole('button', { name: 'Continue' }).click();
   const summary = page.getByRole('alert').filter({ hasText: 'Please fix the following' });
   await expect(summary).toBeFocused();
   await expect(summary).toContainText('Choose where the obstacle is.');
-  await expect(page.getByRole('group', { name: 'What is it?' })).toBeVisible();
+
+  await chooseFirstResult(page, 'Where is it?', 'ploshtad makedonija');
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await expect(stepHeading).toBeFocused();
+  await expect(stepHeading).toHaveText(/Step 2 of 5\s*Obstacle/);
+  await page.getByRole('radio', { name: 'Construction or barrier' }).check();
+  await page.getByRole('button', { name: 'Continue' }).click();
+
+  await expect(stepHeading).toHaveText(/Step 3 of 5\s*Impact/);
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await expect(summary).toContainText('Choose how much it gets in the way.');
+  await page.getByRole('radio', { name: 'I got past with difficulty' }).check();
+  await expect(page.getByRole('checkbox', { name: /This is temporary/ })).toBeChecked();
+  await page.getByRole('button', { name: 'Continue' }).click();
+
+  await expect(stepHeading).toHaveText(/Step 4 of 5\s*Details/);
   await expect(page.getByLabel('Photo')).toBeVisible();
+  await page.getByRole('button', { name: 'Continue' }).click();
+
+  await expect(stepHeading).toHaveText(/Step 5 of 5\s*Check and send/);
+  await expect(page.getByText('Temporary, about 30 days')).toBeVisible();
+  await page.getByRole('button', { name: 'Change: Obstacle' }).click();
+  await expect(stepHeading).toHaveText(/Obstacle/);
+  await page.getByRole('radio', { name: 'High kerb' }).check();
+  await page.getByRole('button', { name: 'Back to summary' }).click();
+  await expect(page.locator('dd', { hasText: 'High kerb' })).toBeVisible();
+
+  const axe = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa']).analyze();
+  expect(axe.violations.map((v) => v.id)).toEqual([]);
+
+  await page.getByRole('button', { name: 'Send report' }).click();
+  await expect(page.getByRole('heading', { name: 'Report sent', level: 1 })).toBeFocused();
 });

@@ -385,7 +385,23 @@
     "needCategory": "Choose what the obstacle is.",
     "needImpact": "Choose how much it gets in the way.",
     "errorSummary": "Please fix the following:",
-    "website": "Leave this field empty"
+    "website": "Leave this field empty",
+    "stepOf": "Step {{n}} of {{total}}",
+    "steps": {
+      "location": "Location",
+      "category": "Obstacle",
+      "impact": "Impact",
+      "details": "Details",
+      "review": "Check and send"
+    },
+    "next": "Continue",
+    "backToReview": "Back to summary",
+    "reviewIntro": "Check your report before you send it. You can change any answer.",
+    "change": "Change",
+    "notGiven": "Not given",
+    "reviewDuration": "Duration",
+    "temporaryFor": "Temporary, about {{duration}}",
+    "notTemporary": "Not temporary"
   },
   "settings": {
     "title": "Settings",
