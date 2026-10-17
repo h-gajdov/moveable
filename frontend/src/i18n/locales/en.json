@@ -39,7 +39,13 @@
     "minutes_other": "{{count}} minutes",
     "hours": "{{h}} h {{m}} min",
     "optional": "optional",
-    "required": "required"
+    "required": "required",
+    "errorSummary": "Please fix the following:",
+    "stepOf": "Step {{n}} of {{total}}",
+    "continue": "Continue",
+    "backToReview": "Back to summary",
+    "change": "Change",
+    "notGiven": "Not given"
   },
   "plan": {
     "title": "Plan your route",
@@ -64,7 +70,10 @@
     "editTrip": "Change",
     "editTripLabel": "Change start, destination or needs",
     "finding": "Finding routes…",
-    "missingPoints": "Choose a start and a destination first.",
+    "reviewStep": "Check and find",
+    "needOrigin": "Choose where you start.",
+    "needDestination": "Choose where you are going.",
+    "reviewIntro": "Check your trip before you search. You can change any answer.",
     "mapPickActive": "Choosing the {{field}} on the map. Tap or click the map, or move it with the arrow keys and press Enter to use the centre point. Press Escape to cancel.",
     "mapPickCancel": "Cancel choosing on map",
     "pointNear": "Point near {{street}}",
@@ -384,9 +393,7 @@
     "needLocation": "Choose where the obstacle is.",
     "needCategory": "Choose what the obstacle is.",
     "needImpact": "Choose how much it gets in the way.",
-    "errorSummary": "Please fix the following:",
     "website": "Leave this field empty",
-    "stepOf": "Step {{n}} of {{total}}",
     "steps": {
       "location": "Location",
       "category": "Obstacle",
@@ -394,11 +401,7 @@
       "details": "Details",
       "review": "Check and send"
     },
-    "next": "Continue",
-    "backToReview": "Back to summary",
     "reviewIntro": "Check your report before you send it. You can change any answer.",
-    "change": "Change",
-    "notGiven": "Not given",
     "reviewDuration": "Duration",
     "temporaryFor": "Temporary, about {{duration}}",
     "notTemporary": "Not temporary"

@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
-import { CircleAlert, CircleCheck } from 'lucide-react';
+import { CircleCheck } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../api/client';
@@ -8,7 +8,9 @@ import { useAnnounce } from '../components/Announcer';
 import { Layout } from '../components/Layout';
 import { LocationInput } from '../components/LocationInput';
 import { MapView } from '../components/MapView';
-import { Button, Checkbox, ErrorBox, Footnote, Group, PageTitle, RadioGroup, Select } from '../components/ui';
+import {
+  Button, Checkbox, ErrorBox, ErrorSummary, Footnote, Group, PageTitle, RadioGroup, Select, StepHeading,
+} from '../components/ui';
 import { currentLanguage } from '../i18n';
 import { useSettings } from '../settings/SettingsContext';
 import { labelForPoint, SKOPJE_CENTER, useAppConfig } from './PlanPage';
@@ -44,7 +46,7 @@ export function ReportPage() {
   const successRef = useRef<HTMLHeadingElement>(null);
   const stepRef = useRef<HTMLHeadingElement>(null);
   const photoRef = useRef<HTMLInputElement>(null);
-  const firstRender = useRef(true);
+  const shownStep = useRef(0);
 
   useEffect(() => {
     if (!photo) {
@@ -57,11 +59,10 @@ export function ReportPage() {
   }, [photo]);
 
   // Move focus to the new step's heading so keyboard and screen reader users start at its top.
+  // Compared with the last step shown rather than skipping the first run, which StrictMode repeats.
   useEffect(() => {
-    if (firstRender.current) {
-      firstRender.current = false;
-      return;
-    }
+    if (shownStep.current === step) return;
+    shownStep.current = step;
     stepRef.current?.focus();
   }, [step]);
 
@@ -136,7 +137,7 @@ export function ReportPage() {
   function reset() {
     setLocation(null); setCategory(undefined); setImpact(undefined); setTemporary(false);
     setDescription(''); setPhoto(null); setErrors([]); setFromReview(false); submit.reset();
-    firstRender.current = true;
+    shownStep.current = 0;
     setStep(0);
   }
 
@@ -164,7 +165,7 @@ export function ReportPage() {
   const fieldLabel = 'px-1 font-display text-[1.0625rem] font-semibold';
   const optional = <span className="font-sans text-[0.875rem] font-normal text-muted">({t('common.optional')})</span>;
   const current = STEPS[step];
-  const notGiven = <span className="text-muted">{t('report.notGiven')}</span>;
+  const notGiven = <span className="text-muted">{t('common.notGiven')}</span>;
   const summary: { step: Step; label: string; value: React.ReactNode }[] = [
     { step: 'location', label: t('report.steps.location'), value: location?.label ?? notGiven },
     { step: 'category', label: t('report.steps.category'), value: category ? t(`report.categories.${category}`) : notGiven },
@@ -184,29 +185,12 @@ export function ReportPage() {
     <Layout title={`${t(`report.steps.${current}`)} · ${t('report.title')}`}>
       <PageTitle subtitle={step === 0 ? t('report.intro') : undefined}>{t('report.title')}</PageTitle>
 
-      <div className="mb-6">
-        <div aria-hidden="true" className="mb-3 flex gap-1.5">
-          {STEPS.map((s, i) => (
-            <span key={s} className={`h-1.5 flex-1 rounded-full transition-colors ${i <= step ? 'bg-accent' : 'bg-fill-strong'}`} />
-          ))}
-        </div>
-        <h2 ref={stepRef} tabIndex={-1} className="px-1 text-[1.25rem]">
-          <span className="block font-sans text-[0.875rem] font-normal text-muted">
-            {t('report.stepOf', { n: step + 1, total: STEPS.length })}
-          </span>
-          {t(`report.steps.${current}`)}
-        </h2>
-      </div>
+      <StepHeading ref={stepRef} className="mb-6" step={step} total={STEPS.length}
+        progress={t('common.stepOf', { n: step + 1, total: STEPS.length })}>
+        {t(`report.steps.${current}`)}
+      </StepHeading>
 
-      {errors.length > 0 && (
-        <div ref={errorRef} tabIndex={-1} role="alert" className="card mb-6 flex gap-3 p-4 ring-[length:var(--hair)] ring-issue">
-          <CircleAlert aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-issue" />
-          <div>
-            <p className="font-semibold">{t('report.errorSummary')}</p>
-            <ul className="mt-1 list-disc pl-5">{errors.map((e) => <li key={e}>{e}</li>)}</ul>
-          </div>
-        </div>
-      )}
+      {errors.length > 0 && <ErrorSummary ref={errorRef} className="mb-6" title={t('common.errorSummary')} errors={errors} />}
 
       {/* Every step stays mounted and is hidden when inactive, so field state (including the chosen file) survives. */}
       <form onSubmit={onSubmit} noValidate className="flex flex-col gap-8">
@@ -282,8 +266,8 @@ export function ReportPage() {
                   <dd className="flex items-center gap-3">
                     <div className="min-w-0 flex-1 break-words font-medium">{row.value}</div>
                     <Button variant="quiet" className="-mr-2 shrink-0" onClick={() => change(row.step)}
-                      aria-label={`${t('report.change')}: ${row.label}`}>
-                      {t('report.change')}
+                      aria-label={`${t('common.change')}: ${row.label}`}>
+                      {t('common.change')}
                     </Button>
                   </dd>
                 </div>
@@ -306,7 +290,7 @@ export function ReportPage() {
           )}
           {step < REVIEW ? (
             <Button type="submit" variant="primary" size="lg" className="w-full sm:flex-[2]">
-              {fromReview ? t('report.backToReview') : t('report.next')}
+              {fromReview ? t('common.backToReview') : t('common.continue')}
             </Button>
           ) : (
             <Button type="submit" variant="primary" size="lg" className="w-full sm:flex-[2]" disabled={submit.isPending}>

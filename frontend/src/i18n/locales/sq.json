@@ -39,7 +39,13 @@
     "minutes_other": "{{count}} minuta",
     "hours": "{{h}} orë {{m}} min",
     "optional": "opsionale",
-    "required": "e detyrueshme"
+    "required": "e detyrueshme",
+    "errorSummary": "Ju lutemi rregulloni sa vijon:",
+    "stepOf": "Hapi {{n}} nga {{total}}",
+    "continue": "Vazhdo",
+    "backToReview": "Kthehu te përmbledhja",
+    "change": "Ndrysho",
+    "notGiven": "Nuk është dhënë"
   },
   "plan": {
     "title": "Planifiko rrugën",
@@ -64,7 +70,10 @@
     "editTrip": "Ndrysho",
     "editTripLabel": "Ndrysho nisjen, destinacionin ose nevojat",
     "finding": "Po kërkoj rrugë…",
-    "missingPoints": "Zgjidhni fillimisht nisjen dhe destinacionin.",
+    "reviewStep": "Kontrollo dhe gjej",
+    "needOrigin": "Zgjidhni nga niseni.",
+    "needDestination": "Zgjidhni ku po shkoni.",
+    "reviewIntro": "Kontrollojeni udhëtimin para se të kërkoni. Mund ta ndryshoni çdo përgjigje.",
     "mapPickActive": "Po zgjidhni {{field}} në hartë. Prekni ose klikoni hartën, ose lëvizeni me shigjetat dhe shtypni Enter për pikën në qendër. Shtypni Escape për të anuluar.",
     "mapPickCancel": "Anulo zgjedhjen në hartë",
     "pointNear": "Pikë pranë {{street}}",
@@ -384,9 +393,7 @@
     "needLocation": "Zgjidhni ku ndodhet pengesa.",
     "needCategory": "Zgjidhni çfarë është pengesa.",
     "needImpact": "Zgjidhni sa ju pengon.",
-    "errorSummary": "Ju lutemi rregulloni sa vijon:",
     "website": "Lëreni këtë fushë bosh",
-    "stepOf": "Hapi {{n}} nga {{total}}",
     "steps": {
       "location": "Vendndodhja",
       "category": "Pengesa",
@@ -394,11 +401,7 @@
       "details": "Detajet",
       "review": "Kontrollo dhe dërgo"
     },
-    "next": "Vazhdo",
-    "backToReview": "Kthehu te përmbledhja",
     "reviewIntro": "Kontrollojeni raportin para se ta dërgoni. Mund ta ndryshoni çdo përgjigje.",
-    "change": "Ndrysho",
-    "notGiven": "Nuk është dhënë",
     "reviewDuration": "Kohëzgjatja",
     "temporaryFor": "E përkohshme, rreth {{duration}}",
     "notTemporary": "Nuk është e përkohshme"
