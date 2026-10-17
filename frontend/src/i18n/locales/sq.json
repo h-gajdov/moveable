@@ -42,7 +42,7 @@
     "required": "e detyrueshme"
   },
   "plan": {
-    "title": "Planifiko një rrugë në këmbë",
+    "title": "Planifiko rrugën",
     "from": "Nisja",
     "to": "Destinacioni",
     "swap": "Ndërro nisjen me destinacionin",

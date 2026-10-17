@@ -42,7 +42,7 @@
     "required": "required"
   },
   "plan": {
-    "title": "Plan a walking route",
+    "title": "Plan your route",
     "from": "Start",
     "to": "Destination",
     "swap": "Swap start and destination",
