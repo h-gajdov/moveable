@@ -100,6 +100,19 @@ def names_of(tags: dict) -> dict:
     return names
 
 
+def is_disabled_parking(tags: dict) -> bool:
+    """Require explicit reserved-parking evidence; wheelchair=yes alone is insufficient."""
+    if tags.get("amenity") not in ("parking", "parking_space"):
+        return False
+    if tags.get("access") in ("private", "no") or tags.get("disabled") == "no":
+        return False
+    capacity = tags.get("capacity:disabled", "")
+    return (tags.get("parking_space") == "disabled"
+            or tags.get("disabled") == "designated"
+            or capacity == "yes"
+            or (capacity.isascii() and capacity.isdigit() and int(capacity) > 0))
+
+
 # ---------------------------------------------------------------------------
 # OSM reading
 # ---------------------------------------------------------------------------
@@ -145,7 +158,10 @@ class _Reader(osmium.SimpleHandler):
         if not self._inside(lon, lat):
             return
         names = names_of(tags)
-        if names:
+        if is_disabled_parking(tags):
+            self.places.append(Place(osm_type, osm_id, "POI", "parking=disabled", names,
+                                     _search_text(names), lon, lat, 20))
+        elif names:
             cat = next(((k, tags[k]) for k in POI_KEYS if k in tags and tags[k] not in POI_SKIP_VALUES), None)
             if cat is None and "building" not in tags:
                 return
@@ -181,7 +197,7 @@ class _Reader(osmium.SimpleHandler):
                 self.street_parts[tags["name"]].append((tags, coords))
         elif "highway" not in tags:
             # Named buildings / amenities mapped as areas -> searchable place at centroid.
-            if names_of(tags) or (tags.get("addr:street") and tags.get("addr:housenumber")):
+            if is_disabled_parking(tags) or names_of(tags) or (tags.get("addr:street") and tags.get("addr:housenumber")):
                 lon = sum(c[0] for c in coords) / len(coords)
                 lat = sum(c[1] for c in coords) / len(coords)
                 self._maybe_place("W", w.id, tags, lon, lat)

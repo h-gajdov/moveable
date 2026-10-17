@@ -495,5 +495,20 @@
   "notFound": {
     "title": "Faqja nuk u gjet",
     "body": "Kjo faqe nuk ekziston. Kthehuni te planifikuesi i rrugëve."
+  },
+  "parking": {
+    "title": "Parkim për persona me aftësi të kufizuara",
+    "notice": "Shfaq vendet e rezervuara të shënuara në hartë dhe parkingjet me vende për persona me aftësi të kufizuara brenda 2 km. Disponueshmëria, rregullat e lejeve dhe qasja pa shkallë nuk janë verifikuar.",
+    "near": "Kërko pranë",
+    "center": "Qendra e Shkupit",
+    "choosePoint": "Zgjidhni një vendndodhje më sipër ose kërkoni pranë qendrës.",
+    "find": "Gjej parkim",
+    "loading": "Duke kërkuar parkim…",
+    "results": "{{count}} vendndodhje parkimi në hartë pranë {{label}} (deri në 20).",
+    "empty": "Nuk ka parkim të shënuar për persona me aftësi të kufizuara brenda 2 km nga {{label}}. Kjo nuk do të thotë se nuk ka vende.",
+    "unnamed": "Parkim për persona me aftësi të kufizuara (pa emër)",
+    "distance": "{{distance}} në vijë të drejtë",
+    "useOrigin": "Përdor si nisje",
+    "useDestination": "Përdor si destinacion"
   }
 }

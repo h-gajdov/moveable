@@ -3,6 +3,31 @@ import os
 import pytest
 
 from pipeline.graph import read_osm
+from pipeline.graph import is_disabled_parking, _Reader
+
+
+@pytest.mark.parametrize("tags, expected", [
+    ({"amenity": "parking_space", "parking_space": "disabled"}, True),
+    ({"amenity": "parking", "capacity:disabled": "2"}, True),
+    ({"amenity": "parking", "capacity:disabled": "yes"}, True),
+    ({"amenity": "parking", "capacity:disabled": "0"}, False),
+    ({"amenity": "parking", "capacity:disabled": "unknown"}, False),
+    ({"amenity": "parking", "wheelchair": "yes"}, False),
+    ({"amenity": "parking_space", "parking_space": "disabled", "access": "private"}, False),
+    ({"amenity": "cafe", "capacity:disabled": "2"}, False),
+])
+def test_disabled_parking_requires_explicit_evidence(tags, expected):
+    assert is_disabled_parking(tags) is expected
+
+
+def test_unnamed_disabled_parking_is_imported_inside_region():
+    reader = _Reader((21, 41, 22, 42))
+    tags = {"amenity": "parking_space", "parking_space": "disabled"}
+    reader._maybe_place("N", 1, tags, 21.4, 41.9)
+    reader._maybe_place("W", 2, tags, 21.5, 41.9)
+    reader._maybe_place("N", 3, tags, 23, 43)
+    assert len(reader.places) == 2
+    assert all(p.category == "parking=disabled" and p.names == {} for p in reader.places)
 
 FIXTURE = os.path.join(os.path.dirname(__file__), "fixtures", "mini.osm")
 

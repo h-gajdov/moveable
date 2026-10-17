@@ -45,6 +45,30 @@ class ApiIntegrationTest {
     JdbcTemplate jdbc;
 
     @Test
+    @org.springframework.transaction.annotation.Transactional
+    void parkingIsFilteredByCategoryRadiusAndSortedByDistance() throws Exception {
+        jdbc.update("DELETE FROM place WHERE category = 'parking=disabled'");
+        jdbc.update("""
+                INSERT INTO place (region_code, kind, category, names, search_text, geom)
+                VALUES ('skopje', 'POI', 'parking=disabled', '{"en":"Near"}', '', ST_SetSRID(ST_MakePoint(21.43,42),4326)),
+                       ('skopje', 'POI', 'parking=disabled', '{}', '', ST_SetSRID(ST_MakePoint(21.435,42),4326)),
+                       ('skopje', 'POI', 'parking=disabled', '{}', '', ST_SetSRID(ST_MakePoint(21.6,42),4326)),
+                       ('skopje', 'POI', 'amenity=parking', '{}', '', ST_SetSRID(ST_MakePoint(21.43,42),4326))
+                """);
+        mvc.perform(get("/api/places/parking").param("lat", "42").param("lon", "21.43"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].names.en").value("Near"))
+                .andExpect(jsonPath("$[0].distanceM").value(0));
+        mvc.perform(get("/api/places/parking").param("lat", "42").param("lon", "21.43").param("limit", "1"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1));
+        mvc.perform(get("/api/places/parking").param("lat", "91").param("lon", "21.43"))
+                .andExpect(status().isBadRequest());
+        mvc.perform(get("/api/places/parking").param("lat", "42").param("lon", "21.43").param("radiusM", "0"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void healthReportsGraphStatus() throws Exception {
         mvc.perform(get("/api/health")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.database").value("UP"))

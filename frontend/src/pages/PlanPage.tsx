@@ -8,6 +8,7 @@ import type { ChosenLocation, LngLat, RouteRequest } from '../api/types';
 import { useAnnounce } from '../components/Announcer';
 import { Layout } from '../components/Layout';
 import { LocationInput } from '../components/LocationInput';
+import { ParkingSearch } from '../components/ParkingSearch';
 import { MapView, type MapFocus } from '../components/MapView';
 import { PreferencesEditor, ProfilePicker } from '../components/NeedsEditor';
 import { RouteResults } from '../components/RouteResults';
@@ -155,6 +156,13 @@ export function PlanPage() {
               {route.isPending ? t('plan.finding') : t('plan.findRoute')}
             </Button>
           </form>
+
+          <ParkingSearch center={center} origin={trip.origin} destination={trip.destination}
+            onSelect={(location, field) => {
+              (field === 'origin' ? trip.setOrigin : trip.setDestination)(location);
+              if (trip.lastRequest) trip.setResult(trip.lastRequest, null);
+              setFocus({ lngLat: [location.lon, location.lat], nonce: Date.now() });
+            }} />
 
           {route.isPending && <p role="status" className="px-1 text-muted">{t('plan.finding')}</p>}
           {errorCode && !route.isPending && (
