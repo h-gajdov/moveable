@@ -10,6 +10,7 @@ import { DEFAULT_SETTINGS, SettingsProvider } from '../settings/SettingsContext'
 import { AnnouncerProvider } from './Announcer';
 import { LocationInput } from './LocationInput';
 import { RouteResults } from './RouteResults';
+import { ParkingSearch } from './ParkingSearch';
 
 function wrap(ui: ReactNode) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -27,6 +28,30 @@ function wrap(ui: ReactNode) {
 beforeEach(async () => {
   await i18n.changeLanguage('en');
   vi.restoreAllMocks();
+});
+
+describe('ParkingSearch', () => {
+  it('finds nearby parking and selects an unnamed space without the map', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify([
+      { id: 'p1', names: {}, lat: 41.996, lon: 21.432, distanceM: 100 },
+    ])));
+    const onSelect = vi.fn();
+    wrap(<ParkingSearch center={[21.43, 42]} origin={null} destination={null} onSelect={onSelect} />);
+    expect(screen.getByRole('button', { name: 'Find disabled parking' })).toBeDisabled();
+    await userEvent.selectOptions(screen.getByRole('combobox'), 'center');
+    await userEvent.click(screen.getByRole('button', { name: 'Find disabled parking' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Use as start' }));
+    expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/api/places/parking?lat=42&lon=21.43'), expect.anything());
+    expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ lat: 41.996, lon: 21.432, source: 'search' }), 'origin');
+  });
+
+  it('explains that an empty result does not establish absence of parking', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('[]'));
+    wrap(<ParkingSearch center={[21.43, 42]} origin={null}
+      destination={{ lat: 42, lon: 21.43, label: 'Square', source: 'search' }} onSelect={vi.fn()} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Find disabled parking' }));
+    expect(await screen.findByText(/This does not mean no spaces exist/)).toBeInTheDocument();
+  });
 });
 
 describe('LocationInput', () => {

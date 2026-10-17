@@ -69,6 +69,29 @@ public class PlaceController {
                 norm, regions.current().code(), like, norm, norm + "%", lon, lat, limit);
     }
 
+    public record ParkingResult(String id, Map<String, String> names, double lat, double lon,
+                                long distanceM) {}
+
+    @GetMapping("/parking")
+    @Operation(summary = "Find mapped disabled parking within a radius, nearest first (not live availability)")
+    public List<ParkingResult> parking(
+            @RequestParam @DecimalMin("-90") @DecimalMax("90") double lat,
+            @RequestParam @DecimalMin("-180") @DecimalMax("180") double lon,
+            @RequestParam(defaultValue = "2000") @Min(100) @Max(10000) int radiusM,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(50) int limit) {
+        return jdbc.query("""
+                WITH pt AS (SELECT ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography AS g)
+                SELECT id, names::text AS names, ST_Y(geom) AS lat, ST_X(geom) AS lon,
+                       ST_Distance(geom::geography, pt.g) AS distance
+                FROM place, pt
+                WHERE region_code = ? AND category = 'parking=disabled'
+                  AND ST_DWithin(geom::geography, pt.g, ?)
+                ORDER BY distance, id LIMIT ?""",
+                (rs, i) -> new ParkingResult("p" + rs.getLong("id"), Json.stringMap(rs.getString("names")),
+                        rs.getDouble("lat"), rs.getDouble("lon"), Math.round(rs.getDouble("distance"))),
+                lon, lat, regions.current().code(), radiusM, limit);
+    }
+
     @GetMapping("/reverse")
     @Operation(summary = "Describe a coordinate: nearest named path or street (within 60 m)")
     public Map<String, Object> reverse(@RequestParam @DecimalMin("-90") @DecimalMax("90") double lat,

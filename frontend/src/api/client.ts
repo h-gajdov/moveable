@@ -53,6 +53,9 @@ const json = (body: unknown): RequestInit => ({
 });
 
 export const api = {
+  parking: (lat: number, lon: number, signal?: AbortSignal) =>
+    request<{ id: string; names: Place['names']; lat: number; lon: number; distanceM: number }[]>(
+      `/api/places/parking?lat=${lat}&lon=${lon}`, { signal }),
   config: () => request<AppConfig>('/api/config'),
   profiles: () => request<{ profiles: Profile[] }>('/api/routing-profiles'),
   route: (req: RouteRequest, signal?: AbortSignal) => request<RouteResponse>('/api/routes', { ...json(req), signal }, 60_000),

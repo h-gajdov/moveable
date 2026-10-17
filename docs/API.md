@@ -54,3 +54,19 @@ with a stable `code` (e.g. `VALIDATION_FAILED`, `RATE_LIMITED`,
 ```
 
 `null` in any attribute means **not mapped**.
+
+## Disabled parking
+
+`GET /api/places/parking?lat=41.9965&lon=21.4314&radiusM=2000&limit=20`
+returns mapped disabled parking in the active region, ordered by straight-line
+distance. Radius accepts 100–10000 metres; limit accepts 1–50. Each result has
+`id`, `names`, `lat`, `lon`, and `distanceM`. Empty names are valid.
+
+Re-run the OSM import after upgrading to populate these results. The importer
+includes nodes and ways tagged `amenity=parking_space` or `amenity=parking`
+with `parking_space=disabled`, `disabled=designated`, or positive/yes
+`capacity:disabled`. Private/no-access locations and `disabled=no` are excluded.
+`wheelchair=yes` alone does not establish reserved parking. Multipolygon
+relations are not currently imported. Parking area coordinates are representative
+points, not verified entrances. Results do not establish live availability,
+permit eligibility, or step-free access; route planning remains pedestrian.
