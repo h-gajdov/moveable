@@ -13,7 +13,7 @@ import { MapView, type MapFocus } from '../components/MapView';
 import { ParkingList, ParkingToggle, parkingLabel, useParking, type ParkingArea } from '../components/Parking';
 import { PreferencesEditor, ProfilePicker } from '../components/NeedsEditor';
 import { RouteResults } from '../components/RouteResults';
-import { Button, ErrorBox, Notice } from '../components/ui';
+import { Button, ErrorBox, ErrorSummary, Footnote, Notice, StepHeading } from '../components/ui';
 import { currentLanguage } from '../i18n';
 import { pickName } from '../lib/format';
 import { useVoiceCue, type VoiceCue } from '../lib/voiceCues';
@@ -42,6 +42,13 @@ export async function labelForPoint(lat: number, lon: number, t: TFunction): Pro
   return { lat, lon, label: t('plan.pointAt', { lat: lat.toFixed(5), lon: lon.toFixed(5) }), source: 'map' };
 }
 
+const STEPS = ['origin', 'destination', 'needs', 'review'] as const;
+type Step = (typeof STEPS)[number];
+const REVIEW = STEPS.length - 1;
+const STEP_LABELS: Record<Step, string> = {
+  origin: 'plan.from', destination: 'plan.to', needs: 'plan.needsTitle', review: 'plan.reviewStep',
+};
+
 export function PlanPage() {
   const { t } = useTranslation();
   const announce = useAnnounce();
@@ -51,12 +58,18 @@ export function PlanPage() {
   const profiles = useProfiles();
   const [pickField, setPickField] = useState<'origin' | 'destination' | null>(null);
   const [focus, setFocus] = useState<MapFocus | null>(null);
-  const [formError, setFormError] = useState<string | null>(null);
+  // A trip that already has both points opens on its summary.
+  const [step, setStep] = useState(() => (trip.origin && trip.destination ? REVIEW : 0));
+  // Set when a step is opened from the summary, so "Continue" goes straight back to it.
+  const [fromReview, setFromReview] = useState(false);
+  const [errors, setErrors] = useState<string[]>([]);
+  const [needsOpen, setNeedsOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(true);
   const [mapView, setMapView] = useState<{ center: LngLat; radiusM: number } | null>(null);
-  const needsRef = useRef<HTMLDetailsElement>(null);
-  const formRef = useRef<HTMLFormElement>(null);
+  const stepRef = useRef<HTMLHeadingElement>(null);
+  const errorRef = useRef<HTMLDivElement>(null);
+  const shownStep = useRef(step);
 
   const profile = profiles.data?.profiles.find((p) => p.code === settings.routing.profile);
   const route = useMutation({
@@ -71,14 +84,8 @@ export function PlanPage() {
     onError: (e) => announce(t(`errors.${e instanceof ApiError ? e.code : 'default'}`, { defaultValue: t('errors.default') }), 'assertive'),
   });
 
-  function submit(e?: React.FormEvent) {
-    e?.preventDefault();
-    if (!trip.origin || !trip.destination) {
-      setFormError(t('plan.missingPoints'));
-      announce(t('plan.missingPoints'), 'assertive');
-      return;
-    }
-    setFormError(null);
+  function findRoute() {
+    if (!trip.origin || !trip.destination) return;
     route.mutate({
       origin: { lat: trip.origin.lat, lon: trip.origin.lon },
       destination: { lat: trip.destination.lat, lon: trip.destination.lon },
@@ -88,24 +95,88 @@ export function PlanPage() {
     });
   }
 
-  // Find routes as soon as both points are chosen (or changed), without a
-  // separate button press. Points that were already routed are left alone, so
-  // coming back from navigation keeps the current result.
+  function missing(s: Step): string | null {
+    if (s === 'origin' && !trip.origin) return t('plan.needOrigin');
+    if (s === 'destination' && !trip.destination) return t('plan.needDestination');
+    return null;
+  }
+
+  function showErrors(errs: string[]) {
+    setErrors(errs);
+    if (errs.length) window.setTimeout(() => errorRef.current?.focus(), 0);
+  }
+
+  function goTo(next: number) {
+    setErrors([]);
+    setPickField(null);
+    setSheetOpen(true);
+    setStep(next);
+  }
+
+  function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (step < REVIEW) {
+      const err = missing(STEPS[step]);
+      if (err) return showErrors([err]);
+      goTo(fromReview ? REVIEW : step + 1);
+      setFromReview(false);
+      return;
+    }
+    // Every required step is checked again in case the summary was reached with gaps.
+    const gap = STEPS.findIndex((s) => missing(s));
+    if (gap >= 0) {
+      goTo(gap);
+      showErrors([missing(STEPS[gap])!]);
+      return;
+    }
+    findRoute();
+  }
+
+  function back() {
+    setFromReview(false);
+    goTo(step - 1);
+  }
+
+  /** Open the form at a step, from the trip summary or the route results. */
+  function edit(s: Step) {
+    setEditing(true);
+    setFromReview(s !== 'review');
+    goTo(STEPS.indexOf(s));
+  }
+
+  // Once there is a route, the form folds into a short trip summary so the
+  // map and the route choices fit on screen together.
+  const hasRoutes = !!trip.response && trip.response.routes.length > 0;
+  const showForm = editing || !hasRoutes || !trip.origin || !trip.destination;
+
+  // While the trip is folded into its summary, points changed from outside the
+  // form (such as a parking spot), or in a form that was then cancelled, find
+  // new routes straight away. Points that were already routed are left alone,
+  // so coming back from navigation keeps the current result.
   useEffect(() => {
     const o = trip.origin;
     const d = trip.destination;
     const last = trip.lastRequest;
-    if (!o || !d) return;
+    if (showForm || !o || !d) return;
     if (last && last.origin.lat === o.lat && last.origin.lon === o.lon
       && last.destination.lat === d.lat && last.destination.lon === d.lon) return;
-    submit();
+    findRoute();
     // only point changes trigger a search; needs changes wait for "Find route"
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [trip.origin, trip.destination]);
+  }, [trip.origin, trip.destination, showForm]);
 
-  // "Change" opens the full form: start at the first field.
+  // Move focus to the step heading when the step changes or the form opens,
+  // so keyboard and screen reader users start at its top.
+  // Compared with the last step shown rather than skipping the first run, which
+  // StrictMode repeats.
   useEffect(() => {
-    if (editing) formRef.current?.querySelector('input')?.focus();
+    if (shownStep.current === step) return;
+    shownStep.current = step;
+    stepRef.current?.focus();
+  }, [step]);
+
+  useEffect(() => {
+    if (editing) stepRef.current?.focus();
   }, [editing]);
 
   /** On phones the map sits above the sheet; scroll back up so it is in view. */
@@ -159,16 +230,35 @@ export function PlanPage() {
     revealMap();
   }
 
-  // Once there is a route, the form folds into a short trip summary so the
-  // map and the route choices fit on screen together.
-  const showForm = editing || !trip.response || trip.response.routes.length === 0;
+  function swap() {
+    const o = trip.origin;
+    trip.setOrigin(trip.destination);
+    trip.setDestination(o);
+  }
+
+  const current = STEPS[step];
+  const notGiven = <span className="text-muted">{t('common.notGiven')}</span>;
+  const needsChanged = Object.keys(settings.routing.overrides).length > 0;
+  const summary: { step: Step; label: string; value: React.ReactNode }[] = [
+    { step: 'origin', label: t('plan.from'), value: trip.origin?.label ?? notGiven },
+    { step: 'destination', label: t('plan.to'), value: trip.destination?.label ?? notGiven },
+    {
+      step: 'needs', label: t('plan.needsTitle'),
+      value: (
+        <>
+          {t(`plan.profiles.${settings.routing.profile}.name`)}
+          {needsChanged && <span className="block text-[0.875rem] font-normal text-muted">{t('prefs.changed')}</span>}
+        </>
+      ),
+    },
+  ];
 
   // Spoken hint for the next thing to choose (demo: only these steps have one).
   const cue: VoiceCue | null = pickField ? 'pickOnMap'
     : route.isPending ? null
-    : showForm && !trip.origin ? 'chooseStart'
-    : showForm && !trip.destination ? 'chooseDestination'
     : !showForm ? 'chooseRoute'
+    : current === 'origin' ? 'chooseStart'
+    : current === 'destination' ? 'chooseDestination'
     : null;
   useVoiceCue(cue, currentLanguage(), settings.ui.voicePrompts);
 
@@ -191,11 +281,20 @@ export function PlanPage() {
               {t(`plan.profiles.${settings.routing.profile}.name`)}
             </li>
           </ul>
-          <Button variant="tinted" aria-label={t('plan.editTripLabel')} onClick={() => setEditing(true)}>{t('plan.editTrip')}</Button>
+          <Button variant="tinted" aria-label={t('plan.editTripLabel')} onClick={() => edit('review')}>{t('plan.editTrip')}</Button>
         </div>
       )}
-      {showForm && <form ref={formRef} onSubmit={submit} noValidate className="flex flex-col gap-6" aria-describedby={formError ? 'plan-error' : undefined}>
-        <div className="card flex flex-col gap-3 p-4">
+      {showForm && (
+        <StepHeading ref={stepRef} step={step} total={STEPS.length}
+          progress={t('common.stepOf', { n: step + 1, total: STEPS.length })}>
+          {t(STEP_LABELS[current])}
+        </StepHeading>
+      )}
+      {showForm && errors.length > 0 && <ErrorSummary ref={errorRef} title={t('common.errorSummary')} errors={errors} />}
+
+      {/* Every step stays mounted and is hidden when inactive, so field state survives. */}
+      {showForm && <form onSubmit={onSubmit} noValidate className="flex flex-col gap-6">
+        <div hidden={current !== 'origin'} className="card flex flex-col gap-3 p-4">
           <LocationInput
             label={t('plan.from')}
             value={trip.origin}
@@ -203,21 +302,9 @@ export function PlanPage() {
             onPickOnMap={showMap ? () => togglePick('origin') : undefined}
             pickActive={pickField === 'origin'}
           />
-          <div className="flex items-center gap-3">
-            <div aria-hidden="true" className="h-px flex-1 bg-hairline" />
-            <Button
-              variant="secondary"
-              onClick={() => {
-                const o = trip.origin;
-                trip.setOrigin(trip.destination);
-                trip.setDestination(o);
-              }}
-              icon={<ArrowUpDown aria-hidden="true" className="size-4.5" />}
-            >
-              {t('plan.swap')}
-            </Button>
-            <div aria-hidden="true" className="h-px flex-1 bg-hairline" />
-          </div>
+        </div>
+
+        <div hidden={current !== 'destination'} className="card flex flex-col gap-3 p-4">
           <LocationInput
             label={t('plan.to')}
             value={trip.destination}
@@ -228,10 +315,9 @@ export function PlanPage() {
           />
         </div>
 
-        <section aria-labelledby="needs-h" className="flex flex-col gap-3">
-          <h2 id="needs-h" className="px-1 text-[1.375rem]">{t('plan.needsTitle')}</h2>
+        <div hidden={current !== 'needs'} className="flex flex-col gap-3">
           <ProfilePicker value={settings.routing.profile} onChange={(p) => updateRouting({ profile: p, overrides: {} })} />
-          <details ref={needsRef} className="group card">
+          <details open={needsOpen} onToggle={(e) => setNeedsOpen(e.currentTarget.open)} className="group card">
             <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 rounded-card px-4 font-medium text-link [&::-webkit-details-marker]:hidden">
               {t('plan.adjust')}
               <ChevronRight aria-hidden="true" className="size-5 shrink-0 text-muted transition-transform group-open:rotate-90" />
@@ -241,14 +327,48 @@ export function PlanPage() {
                 onChange={(o) => updateRouting({ overrides: o })} />
             </div>
           </details>
-        </section>
+        </div>
 
-        {formError && <p id="plan-error" className="px-1 font-medium text-issue">{formError}</p>}
+        {current === 'review' && (
+          <div className="flex flex-col gap-4">
+            <Footnote>{t('plan.reviewIntro')}</Footnote>
+            <dl className="card rows px-4">
+              {summary.map((row) => (
+                <div key={row.step} className="py-3">
+                  <dt className="text-[0.875rem] text-muted">{row.label}</dt>
+                  <dd className="flex items-center gap-3">
+                    <div className="min-w-0 flex-1 break-words font-medium">{row.value}</div>
+                    <Button variant="quiet" className="-mr-2 shrink-0" onClick={() => edit(row.step)}
+                      aria-label={`${t('common.change')}: ${row.label}`}>
+                      {t('common.change')}
+                    </Button>
+                  </dd>
+                </div>
+              ))}
+            </dl>
+            <Button variant="secondary" className="self-start" onClick={swap}
+              icon={<ArrowUpDown aria-hidden="true" className="size-4.5" />}>
+              {t('plan.swap')}
+            </Button>
+          </div>
+        )}
+
         <div className="flex flex-col gap-2">
-          <Button type="submit" variant="primary" size="lg" className="w-full" disabled={route.isPending}>
-            {route.isPending ? t('plan.finding') : t('plan.findRoute')}
-          </Button>
-          {editing && trip.response && trip.response.routes.length > 0 && (
+          <div className="flex flex-col-reverse gap-3 sm:flex-row">
+            {step > 0 && (
+              <Button size="lg" className="sm:flex-1" onClick={back}>{t('common.back')}</Button>
+            )}
+            {step < REVIEW ? (
+              <Button type="submit" variant="primary" size="lg" className="w-full sm:flex-[2]">
+                {fromReview ? t('common.backToReview') : t('common.continue')}
+              </Button>
+            ) : (
+              <Button type="submit" variant="primary" size="lg" className="w-full sm:flex-[2]" disabled={route.isPending}>
+                {route.isPending ? t('plan.finding') : t('plan.findRoute')}
+              </Button>
+            )}
+          </div>
+          {editing && hasRoutes && (
             <Button variant="quiet" className="w-full" onClick={() => setEditing(false)}>{t('common.cancel')}</Button>
           )}
         </div>
@@ -256,7 +376,7 @@ export function PlanPage() {
 
       {route.isPending && <p role="status" className="px-1 text-muted">{t('plan.finding')}</p>}
       {errorCode && !route.isPending && (
-        <ErrorBox onRetry={() => submit()} retryLabel={t('common.retry')}>
+        <ErrorBox onRetry={findRoute} retryLabel={t('common.retry')}>
           {t(`errors.${errorCode}`, { defaultValue: t('errors.default') })}
         </ErrorBox>
       )}
@@ -270,10 +390,8 @@ export function PlanPage() {
             setSheetOpen(false);
           } : undefined}
           onAdjustNeeds={() => {
-            if (needsRef.current) {
-              needsRef.current.open = true;
-              needsRef.current.querySelector('summary')?.focus();
-            }
+            setNeedsOpen(true);
+            edit('needs');
           }}
         />
       )}
@@ -331,7 +449,7 @@ export function PlanPage() {
   );
 
   return (
-    <Layout title={t('plan.title')} wide={showMap}>
+    <Layout title={showForm ? `${t(STEP_LABELS[current])} · ${t('plan.title')}` : t('plan.title')} wide={showMap}>
       {showMap ? (
         <MapSheet map={mapPanel} mapLabel={t('common.mapRegion')} onMapFocus={revealMap} open={sheetOpen}
           onOpenChange={setSheetOpen} className="flex flex-col gap-6">

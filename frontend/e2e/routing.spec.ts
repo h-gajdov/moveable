@@ -16,6 +16,29 @@ async function chooseFirstResult(page: Page, field: string, query: string) {
   await expect(input).not.toHaveValue(query);
 }
 
+/** Go through the plan steps: start, destination, needs, then find routes from the summary. */
+async function planTrip(page: Page, profile?: string) {
+  const stepHeading = page.getByRole('heading', { name: /Step \d of 4/, level: 2 });
+  const next = page.getByRole('button', { name: 'Continue' });
+  await expect(stepHeading).toHaveText(/Step 1 of 4\s*Start/);
+  await chooseFirstResult(page, 'Start', 'ploshtad makedonija');
+  await next.click();
+  await expect(stepHeading).toBeFocused();
+  await expect(stepHeading).toHaveText(/Step 2 of 4\s*Destination/);
+  await chooseFirstResult(page, 'Destination', 'Стара скопска чаршија');
+  await next.click();
+  await expect(stepHeading).toHaveText(/Step 3 of 4\s*Your needs/);
+  if (profile) {
+    const radio = page.getByRole('radio', { name: profile });
+    await radio.focus();
+    await page.keyboard.press('Space');
+    await expect(radio).toBeChecked();
+  }
+  await next.click();
+  await expect(stepHeading).toHaveText(/Step 4 of 4\s*Check and find/);
+  await page.getByRole('button', { name: 'Find route' }).click();
+}
+
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     window.localStorage.setItem('accessible-skopje:lang', 'en');
@@ -26,14 +49,7 @@ test.beforeEach(async ({ page }) => {
 
 test('keyboard-only wheelchair route between two real places', async ({ page }) => {
   await page.goto('/');
-  const wheelchair = page.getByRole('radio', { name: 'Wheelchair or wheeled aid' });
-  await wheelchair.focus();
-  await page.keyboard.press('Space');
-  await expect(wheelchair).toBeChecked();
-
-  // Routes are found as soon as both points are chosen.
-  await chooseFirstResult(page, 'Start', 'ploshtad makedonija');
-  await chooseFirstResult(page, 'Destination', 'Стара скопска чаршија');
+  await planTrip(page, 'Wheelchair or wheeled aid');
 
   const results = page.getByRole('heading', { name: 'Routes', level: 2 });
   await expect(results).toBeFocused({ timeout: 30_000 });
@@ -63,29 +79,43 @@ test('keyboard-only wheelchair route between two real places', async ({ page }) 
 
 test('the trip folds into a summary that can be changed', async ({ page }) => {
   await page.goto('/');
-  await chooseFirstResult(page, 'Start', 'ploshtad makedonija');
-  await chooseFirstResult(page, 'Destination', 'Стара скопска чаршија');
+  await planTrip(page);
   await expect(page.getByRole('heading', { name: 'Routes', level: 2 })).toBeVisible({ timeout: 30_000 });
   await expect(page.getByRole('combobox', { name: 'Start' })).toHaveCount(0);
   await page.getByRole('button', { name: 'Change start, destination or needs' }).click();
-  await expect(page.getByRole('combobox', { name: 'Start' })).toBeFocused();
+  const stepHeading = page.getByRole('heading', { name: /Step \d of 4/, level: 2 });
+  await expect(stepHeading).toBeFocused();
+  await expect(stepHeading).toHaveText(/Step 4 of 4\s*Check and find/);
+  await page.getByRole('button', { name: 'Change: Your needs' }).click();
+  await expect(stepHeading).toHaveText(/Your needs/);
+  await page.getByRole('radio', { name: 'Reduced mobility' }).check();
+  await page.getByRole('button', { name: 'Back to summary' }).click();
+  await expect(page.locator('dd', { hasText: 'Reduced mobility' })).toBeVisible();
   await page.getByRole('button', { name: 'Find route' }).click();
   await expect(page.getByRole('heading', { name: 'Routes', level: 2 })).toBeFocused({ timeout: 30_000 });
 });
 
 test('standard profile is allowed to use stairs; the route says so', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('radio', { name: 'Standard walking' }).check();
-  await chooseFirstResult(page, 'Start', 'ploshtad makedonija');
-  await chooseFirstResult(page, 'Destination', 'Стара скопска чаршија');
+  await planTrip(page, 'Standard walking');
   await expect(page.getByRole('heading', { name: 'Routes', level: 2 })).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText(/set of stairs/).first()).toBeVisible();
 });
 
-test('missing destination gives an accessible error', async ({ page }) => {
+test('each plan step checks its answer before going on', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Find route' }).click();
-  await expect(page.getByRole('alert')).toHaveText('Choose a start and a destination first.');
+  await page.getByRole('button', { name: 'Continue' }).click();
+  const summary = page.getByRole('alert').filter({ hasText: 'Please fix the following' });
+  await expect(summary).toBeFocused();
+  await expect(summary).toContainText('Choose where you start.');
+
+  await chooseFirstResult(page, 'Start', 'ploshtad makedonija');
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await expect(summary).toContainText('Choose where you are going.');
+
+  const axe = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa']).analyze();
+  expect(axe.violations.map((v) => v.id)).toEqual([]);
 });
 
 test('obstacle report form goes step by step and validates each step', async ({ page }) => {

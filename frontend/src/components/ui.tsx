@@ -197,6 +197,45 @@ export function ErrorBox({ children, onRetry, retryLabel }: { children: ReactNod
   );
 }
 
+/**
+ * Progress bar and heading for one step of a multi-step form. The heading
+ * takes focus when the step changes, so it starts with "Step n of total".
+ */
+export const StepHeading = forwardRef<HTMLHeadingElement, {
+  step: number; total: number; progress: string; children: ReactNode; className?: string;
+}>(
+  function StepHeading({ step, total, progress, children, className = '' }, ref) {
+    return (
+      <div className={className}>
+        <div aria-hidden="true" className="mb-3 flex gap-1.5">
+          {Array.from({ length: total }, (_, i) => (
+            <span key={i} className={`h-1.5 flex-1 rounded-full transition-colors ${i <= step ? 'bg-accent' : 'bg-fill-strong'}`} />
+          ))}
+        </div>
+        <h2 ref={ref} tabIndex={-1} className="px-1 text-[1.25rem]">
+          <span className="block font-sans text-[0.875rem] font-normal text-muted">{progress}</span>
+          {children}
+        </h2>
+      </div>
+    );
+  },
+);
+
+/** Validation errors for a form step; focus it when it appears. */
+export const ErrorSummary = forwardRef<HTMLDivElement, { title: ReactNode; errors: string[]; className?: string }>(
+  function ErrorSummary({ title, errors, className = '' }, ref) {
+    return (
+      <div ref={ref} tabIndex={-1} role="alert" className={`card flex gap-3 p-4 ring-[length:var(--hair)] ring-issue ${className}`}>
+        <CircleAlert aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-issue" />
+        <div>
+          <p className="font-semibold">{title}</p>
+          <ul className="mt-1 list-disc pl-5">{errors.map((e) => <li key={e}>{e}</li>)}</ul>
+        </div>
+      </div>
+    );
+  },
+);
+
 /** Quiet informational note on a filled background. */
 export function Notice({ children, icon, className = '' }: { children: ReactNode; icon?: ReactNode; className?: string }) {
   return (
