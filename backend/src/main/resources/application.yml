@@ -1,0 +1,133 @@
+spring:
+  application:
+    name: accessible-skopje-backend
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:accessible_skopje}
+    username: ${DB_USER:accessible}
+    password: ${DB_PASSWORD:}
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:10}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate.jdbc.time_zone: UTC
+  flyway:
+    enabled: true
+  servlet:
+    multipart:
+      max-file-size: 6MB
+      max-request-size: 7MB
+  jackson:
+    default-property-inclusion: non_null
+
+server:
+  port: ${PORT:8080}
+  error:
+    include-stacktrace: never
+    include-message: never
+    include-exception: false
+  forward-headers-strategy: framework
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+
+springdoc:
+  api-docs:
+    path: /api/openapi
+  swagger-ui:
+    path: /api/docs
+
+logging:
+  level:
+    root: INFO
+    mk.accessibleskopje: INFO
+
+app:
+  region: skopje
+  cors-allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+  admin:
+    bootstrap-username: ${ADMIN_USERNAME:}
+    bootstrap-password: ${ADMIN_PASSWORD:}
+  uploads:
+    dir: ${UPLOAD_DIR:./uploads}
+    max-bytes: 5242880
+    max-dimension-px: 1600
+  rate-limit:
+    reports-per-window: 5
+    confirmations-per-window: 20
+    routes-per-window: 60
+    window-seconds: 600
+
+  # ---------------------------------------------------------------------------
+  # Routing weights. Edge cost (in "metre equivalents"):
+  #   cost = length * (1 + sum of multiplicative penalties) + sum of fixed penalties
+  # Hard constraints (stairs, kerbs, widths, measured inclines, impassable
+  # obstacles) are NOT here: they remove edges from the graph entirely.
+  # ---------------------------------------------------------------------------
+  routing:
+    max-snap-distance-m: 150
+    snap-warning-distance-m: 40
+    min-component-size: 25
+    search-margin-deg: 0.012
+    max-route-distance-m: 30000
+    obstacle-buffer-m: 10
+    alternatives-overlap-threshold: 0.85
+    weights:
+      # Soft penalties are scaled down when the user asks to minimise distance.
+      minimize-distance-scale: 0.4
+      surface:
+        intermediate: 0.15
+        rough: 1.2
+        very-rough: 4.0
+        impassable: 8.0
+        unknown: 0.25
+        wheeled-multiplier: 1.8
+      slope:
+        # Penalty per percentage point above the comfortable incline.
+        comfortable-pct: 3.0
+        per-pct: 0.12
+        # DEM-estimated slopes are uncertain: weighted lower, never a hard limit.
+        estimated-weight: 0.6
+        over-limit-estimated: 2.5
+        hint-penalty: 0.4
+      traffic:
+        per-exposure-level: 0.08
+        minimize-per-exposure-level: 0.45
+        carriageway-with-separate-sidewalk: 0.6
+      pedestrian-preference:
+        road-penalty: 0.25
+        track-penalty: 0.3
+      crossing:
+        signals: 8
+        marked: 18
+        unmarked: 45
+        informal: 70
+        unknown: 30
+        accessible-missing-sound: 45
+        accessible-missing-tactile: 20
+        wheeled-unknown-kerb: 35
+        via-node-share: 0.5
+      uncertainty:
+        base: 0.1
+        profile: 0.35
+        coverage-alternative: 1.4
+      intersections:
+        per-extra-branch: 12
+      lit:
+        unlit-or-unknown: 0.25
+      rest:
+        no-bench: 0.12
+      stairs:
+        penalty: 25
+      wheelchair-limited: 0.6
+      obstacles:
+        difficult: 250
+        minor: 60

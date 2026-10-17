@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+
+jobs:
+  pipeline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build pipeline image
+        run: docker build -t as-pipeline data-pipeline
+      - name: Unit tests
+        run: docker run --rm --entrypoint python as-pipeline -m pytest -q tests
+
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Unit and integration tests (Testcontainers, PostGIS + pgRouting)
+        working-directory: backend
+        run: ./mvnw -B test
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - working-directory: frontend
+        run: npm ci
+      - working-directory: frontend
+        run: npm run lint
+      - working-directory: frontend
+        run: npm test
+      - working-directory: frontend
+        run: npm run build
+
+  e2e:
+    # Full stack with real Skopje OSM data, then Playwright + axe-core.
+    runs-on: ubuntu-latest
+    needs: [pipeline, backend, frontend]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure environment
+        run: |
+          cp .env.example .env
+          sed -i "s/change-me-db-password/ci-db-$RANDOM$RANDOM/; s/change-me-admin-password/ci-admin-$RANDOM$RANDOM$RANDOM/" .env
+      - name: Start stack
+        run: docker compose up -d --build
+      - name: Import Skopje
+        run: docker compose run --rm pipeline all --region skopje --no-dem
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - working-directory: frontend
+        run: npm ci && npx playwright install --with-deps chromium
+      - name: Wait for backend
+        run: for i in $(seq 1 60); do curl -sf http://localhost:8081/api/health && break; sleep 5; done
+      - working-directory: frontend
+        env:
+          E2E_BASE_URL: http://localhost:8081
+        run: npx playwright test
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: frontend/playwright-report

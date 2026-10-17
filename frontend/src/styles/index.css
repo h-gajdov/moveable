@@ -1,0 +1,256 @@
+@import "tailwindcss";
+
+/* Fonts are self-hosted (no third-party font requests). Fira Sans covers
+   Macedonian Cyrillic and Albanian (ë, ç). */
+@import "@fontsource/fira-sans/400.css";
+@import "@fontsource/fira-sans/500.css";
+@import "@fontsource/fira-sans/700.css";
+@import "@fontsource/fira-sans-condensed/600.css";
+@import "@fontsource/fira-sans-condensed/700.css";
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* ---------------------------------------------------------------------------
+   Tokens. Names follow the subject: Vardar (river teal), stone (Stone Bridge),
+   tactile (tactile-paving yellow, used for focus and highlights only).
+   --------------------------------------------------------------------------- */
+:root,
+:root[data-theme="light"] {
+  --c-bg: #eef2f3;
+  --c-surface: #ffffff;
+  --c-surface-2: #e3eaec;
+  --c-ink: #0f2a33;
+  --c-ink-soft: #3d5862;
+  --c-line: #b7c6cb;
+  --c-vardar: #0b4f6c;
+  --c-vardar-ink: #ffffff;
+  --c-tactile: #ffd23f;
+  --c-tactile-ink: #0f2a33;
+  --c-ok: #1f7a4d;
+  --c-issue: #b4410e;
+  --c-unknown: #5b5f97;
+  --c-route-1: #0072b2;
+  --c-route-2: #b35c00;
+  --c-route-3: #a8457f;
+  --c-focus-outer: #0f2a33;
+  --c-focus-inner: #ffd23f;
+  --border-w: 1px;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) ,
+  :root[data-theme="system"] {
+    --c-bg: #0e1f26;
+    --c-surface: #142a33;
+    --c-surface-2: #1c3742;
+    --c-ink: #e8f1f3;
+    --c-ink-soft: #a9c0c7;
+    --c-line: #3b5a66;
+    --c-vardar: #5fb3d4;
+    --c-vardar-ink: #0e1f26;
+    --c-ok: #5cc48f;
+    --c-issue: #ff9a6a;
+    --c-unknown: #b0b4f0;
+    --c-route-1: #56b4e9;
+    --c-route-2: #e69f00;
+    --c-route-3: #cc79a7;
+    --c-focus-outer: #ffd23f;
+    --c-focus-inner: #0e1f26;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --c-bg: #0e1f26;
+  --c-surface: #142a33;
+  --c-surface-2: #1c3742;
+  --c-ink: #e8f1f3;
+  --c-ink-soft: #a9c0c7;
+  --c-line: #3b5a66;
+  --c-vardar: #5fb3d4;
+  --c-vardar-ink: #0e1f26;
+  --c-ok: #5cc48f;
+  --c-issue: #ff9a6a;
+  --c-unknown: #b0b4f0;
+  --c-route-1: #56b4e9;
+  --c-route-2: #e69f00;
+  --c-route-3: #cc79a7;
+  --c-focus-outer: #ffd23f;
+  --c-focus-inner: #0e1f26;
+  color-scheme: dark;
+}
+
+/* High contrast: pure black/white, yellow signal colour, thicker borders. */
+:root[data-theme="contrast"] {
+  --c-bg: #000000;
+  --c-surface: #000000;
+  --c-surface-2: #1a1a1a;
+  --c-ink: #ffffff;
+  --c-ink-soft: #ffffff;
+  --c-line: #ffffff;
+  --c-vardar: #ffe600;
+  --c-vardar-ink: #000000;
+  --c-tactile: #ffe600;
+  --c-tactile-ink: #000000;
+  --c-ok: #7dff9e;
+  --c-issue: #ffb38a;
+  --c-unknown: #c9ccff;
+  --c-route-1: #ffe600;
+  --c-route-2: #00e5ff;
+  --c-route-3: #ff8cf0;
+  --c-focus-outer: #ffe600;
+  --c-focus-inner: #000000;
+  --border-w: 2px;
+  color-scheme: dark;
+}
+
+@theme {
+  --font-sans: "Fira Sans", system-ui, sans-serif;
+  --font-display: "Fira Sans Condensed", "Fira Sans", system-ui, sans-serif;
+  --color-bg: var(--c-bg);
+  --color-surface: var(--c-surface);
+  --color-surface-2: var(--c-surface-2);
+  --color-ink: var(--c-ink);
+  --color-ink-soft: var(--c-ink-soft);
+  --color-line: var(--c-line);
+  --color-vardar: var(--c-vardar);
+  --color-vardar-ink: var(--c-vardar-ink);
+  --color-tactile: var(--c-tactile);
+  --color-tactile-ink: var(--c-tactile-ink);
+  --color-ok: var(--c-ok);
+  --color-issue: var(--c-issue);
+  --color-unknown: var(--c-unknown);
+}
+
+/* Text size is a user setting applied to the root, so every rem scales. */
+html {
+  font-size: calc(100% * var(--text-scale, 1));
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--c-bg);
+  color: var(--c-ink);
+  font-family: var(--font-sans);
+  line-height: 1.55;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Optional wider spacing (helps some readers with dyslexia or low vision). */
+:root[data-spacing="wide"] body {
+  letter-spacing: 0.04em;
+  word-spacing: 0.12em;
+  line-height: 1.8;
+}
+
+h1, h2, h3 {
+  font-family: var(--font-display);
+  line-height: 1.15;
+  letter-spacing: -0.005em;
+}
+
+/* Focus: a two-tone ring visible on any background (WCAG 2.4.7 / 2.4.13). */
+:focus-visible {
+  outline: 3px solid var(--c-focus-inner);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 5px var(--c-focus-outer);
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+:root[data-motion="reduce"] *,
+:root[data-motion="reduce"] *::before,
+:root[data-motion="reduce"] *::after {
+  animation-duration: 0.01ms !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+.sr-only-focusable:not(:focus) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Hairline that respects the theme's border weight. */
+.rule {
+  border-color: var(--c-line);
+  border-width: var(--border-w);
+}
+
+/* MapLibre controls: large targets and theme colours. */
+.maplibregl-ctrl-group button {
+  width: 44px !important;
+  height: 44px !important;
+}
+.maplibregl-ctrl-attrib {
+  font-size: 0.75rem;
+}
+.maplibregl-canvas:focus-visible {
+  outline: 3px solid var(--c-focus-inner);
+  outline-offset: -6px;
+  box-shadow: inset 0 0 0 6px var(--c-focus-outer);
+}
+
+/* The route line diagram (signature element). */
+.route-line {
+  --line-color: var(--c-route-1);
+  position: relative;
+}
+.route-line > li {
+  position: relative;
+  padding-left: 3.25rem;
+}
+.route-line > li::before {
+  content: "";
+  position: absolute;
+  left: 1.05rem;
+  top: 0;
+  bottom: 0;
+  width: 0.45rem;
+  background: var(--line-color);
+}
+.route-line > li:first-child::before { top: 1.4rem; }
+.route-line > li:last-child::before { bottom: calc(100% - 1.4rem); }
+.route-line .stop {
+  position: absolute;
+  left: 0.3rem;
+  top: 0.45rem;
+  width: 2rem;
+  height: 2rem;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--c-surface);
+  border: 0.3rem solid var(--line-color);
+  color: var(--c-ink);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+.route-line .stop[data-kind="CROSS"] {
+  border-radius: 4px;
+  background: repeating-linear-gradient(90deg, var(--c-ink) 0 3px, var(--c-surface) 3px 6px);
+}
+.route-line .stop[data-kind="STAIRS"] {
+  border-radius: 4px;
+}
+.route-line > li[aria-current="step"] .stop {
+  background: var(--c-tactile);
+  color: var(--c-tactile-ink);
+}
+
+@media (forced-colors: active) {
+  .route-line > li::before { background: CanvasText; }
+  .route-line .stop { border-color: CanvasText; forced-color-adjust: none; }
+}

@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Small deterministic fixture: a sidewalk with a kerbed crossing, steps,
+     a private road and a motorway. Coordinates near Skopje centre. -->
+<osm version="0.6" generator="handwritten">
+  <node id="1" lat="42.0000" lon="21.4300" version="1"/>
+  <node id="2" lat="42.0000" lon="21.4310" version="1"/>
+  <node id="3" lat="42.0000" lon="21.4320" version="1">
+    <tag k="kerb" v="raised"/>
+  </node>
+  <node id="4" lat="42.0005" lon="21.4320" version="1">
+    <tag k="highway" v="crossing"/>
+    <tag k="crossing" v="traffic_signals"/>
+    <tag k="traffic_signals:sound" v="yes"/>
+    <tag k="tactile_paving" v="yes"/>
+  </node>
+  <node id="5" lat="42.0010" lon="21.4320" version="1">
+    <tag k="kerb" v="lowered"/>
+  </node>
+  <node id="6" lat="42.0010" lon="21.4330" version="1"/>
+  <node id="7" lat="42.0005" lon="21.4310" version="1"/>
+  <node id="8" lat="42.0005" lon="21.4300" version="1"/>
+  <node id="9" lat="41.9990" lon="21.4300" version="1"/>
+  <node id="10" lat="41.9990" lon="21.4320" version="1"/>
+  <node id="11" lat="42.0005" lon="21.4325" version="1"/>
+  <node id="12" lat="42.0005" lon="21.4315" version="1"/>
+  <node id="20" lat="42.0002" lon="21.4305" version="1">
+    <tag k="amenity" v="bench"/>
+  </node>
+  <node id="21" lat="42.0003" lon="21.4306" version="1">
+    <tag k="amenity" v="pharmacy"/>
+    <tag k="name" v="Аптека Центар"/>
+  </node>
+
+  <!-- Sidewalk 1-2-3 -->
+  <way id="100" version="1">
+    <nd ref="1"/><nd ref="2"/><nd ref="3"/>
+    <tag k="highway" v="footway"/><tag k="footway" v="sidewalk"/>
+    <tag k="surface" v="paving_stones"/><tag k="width" v="2,5"/>
+    <tag k="name" v="Македонија"/><tag k="name:sq" v="Maqedonia"/>
+  </way>
+  <!-- Crossing 3-4-5 over road 12-4-11 -->
+  <way id="101" version="1">
+    <nd ref="3"/><nd ref="4"/><nd ref="5"/>
+    <tag k="highway" v="footway"/><tag k="footway" v="crossing"/>
+  </way>
+  <way id="102" version="1">
+    <nd ref="12"/><nd ref="4"/><nd ref="11"/>
+    <tag k="highway" v="secondary"/><tag k="sidewalk" v="separate"/>
+  </way>
+  <way id="103" version="1">
+    <nd ref="5"/><nd ref="6"/>
+    <tag k="highway" v="footway"/><tag k="surface" v="asphalt"/>
+  </way>
+  <!-- Steps 2-7 -->
+  <way id="104" version="1">
+    <nd ref="2"/><nd ref="7"/>
+    <tag k="highway" v="steps"/><tag k="incline" v="up"/>
+  </way>
+  <!-- Private service road 7-8 -->
+  <way id="105" version="1">
+    <nd ref="7"/><nd ref="8"/>
+    <tag k="highway" v="service"/><tag k="access" v="private"/>
+  </way>
+  <!-- Motorway 9-10 -->
+  <way id="106" version="1">
+    <nd ref="9"/><nd ref="10"/>
+    <tag k="highway" v="motorway"/>
+  </way>
+  <!-- Residential with no sidewalk info 1-9 -->
+  <way id="107" version="1">
+    <nd ref="1"/><nd ref="9"/>
+    <tag k="highway" v="residential"/>
+  </way>
+</osm>

@@ -1,0 +1,29 @@
+# Secrets
+.env
+*.env.local
+
+# Geographic data (large / generated)
+data-pipeline/data/
+*.osm.pbf
+*.tif
+
+# Build output
+node_modules/
+dist/
+dev-dist/
+target/
+*.class
+__pycache__/
+*.pyc
+.pytest_cache/
+frontend/coverage/
+playwright-report/
+test-results/
+
+# IDE / OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+.playwright-mcp/

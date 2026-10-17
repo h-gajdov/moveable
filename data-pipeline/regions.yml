@@ -1,0 +1,13 @@
+# Regions supported by the import pipeline. Adding a city = adding an entry here
+# (plus a matching row in the `region` table, created by the backend migrations).
+regions:
+  skopje:
+    name: Skopje
+    country_extract_url: https://download.geofabrik.de/europe/macedonia-latest.osm.pbf
+    country_extract_file: macedonia-latest.osm.pbf
+    # min_lon, min_lat, max_lon, max_lat (WGS84). Covers the City of Skopje's urban area.
+    bbox: [21.28, 41.92, 21.62, 42.08]
+    # Copernicus GLO-30 DEM tiles covering the bbox (used only for *estimated* slopes).
+    dem_tiles:
+      - Copernicus_DSM_COG_10_N41_00_E021_00_DEM
+      - Copernicus_DSM_COG_10_N42_00_E021_00_DEM
