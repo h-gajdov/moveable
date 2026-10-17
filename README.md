@@ -1,4 +1,4 @@
-# Accessible Skopje
+# MoveAble
 
 An open-source pedestrian navigation platform that finds walking routes in Skopje
 **to fit a person's accessibility needs**, rather than just the shortest path.

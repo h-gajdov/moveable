@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Accessible Skopje: accessibility-aware pedestrian routing for Skopje. Three
+MoveAble: accessibility-aware pedestrian routing for Skopje. Three
 deployable parts plus a data import:
 
 - `backend/`: Java 21, Spring Boot **4.0** (Jackson 3 = `tools.jackson.*`, modular starters, Testcontainers 2), Flyway migrations in `src/main/resources/db/migration` (the backend owns the schema).

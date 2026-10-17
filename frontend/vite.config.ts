@@ -12,8 +12,8 @@ export default defineConfig({
       registerType: 'prompt',
       includeAssets: ['icon.svg'],
       manifest: {
-        name: 'Accessible Skopje',
-        short_name: 'Accessible Skopje',
+        name: 'MoveAble',
+        short_name: 'MoveAble',
         description: 'Pedestrian routes that fit your accessibility needs in Skopje.',
         lang: 'mk',
         theme_color: '#F5F5F7',

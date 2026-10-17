@@ -104,7 +104,7 @@ def cmd_import(code: str, cfg: dict, use_dem: bool) -> None:
 
 def main(argv=None) -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
-    ap = argparse.ArgumentParser(prog="pipeline", description="Accessible Skopje data pipeline")
+    ap = argparse.ArgumentParser(prog="pipeline", description="MoveAble data pipeline")
     ap.add_argument("command", choices=["download", "extract", "import", "all"])
     ap.add_argument("--region", default="skopje")
     ap.add_argument("--no-dem", action="store_true", help="skip estimated slopes from Copernicus DEM")

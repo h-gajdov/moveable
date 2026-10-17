@@ -1,4 +1,4 @@
-# Accessible Skopje frontend. ${MAP_ORIGINS} lists the map tile/style origins allowed by the CSP.
+# MoveAble frontend. ${MAP_ORIGINS} lists the map tile/style origins allowed by the CSP.
 server {
     listen 80;
     server_name _;

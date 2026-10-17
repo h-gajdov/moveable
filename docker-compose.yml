@@ -1,4 +1,4 @@
-# Accessible Skopje — local / self-hosted stack.
+# MoveAble — local / self-hosted stack.
 #   docker compose up -d --build            # database, backend, frontend
 #   docker compose run --rm pipeline all    # download + import Skopje OSM data
 name: accessible-skopje

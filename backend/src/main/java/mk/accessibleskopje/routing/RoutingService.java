@@ -498,7 +498,7 @@ public class RoutingService {
             ts = t.toInstant();
         }
         return new DataNotice("ROUTE_NOT_GUARANTEED", ts, List.of("OpenStreetMap", "Copernicus DEM (estimated slopes)",
-                "Accessible Skopje community reports (verified only)"));
+                "MoveAble community reports (verified only)"));
     }
 
     static String toWkt(List<double[]> line) {
